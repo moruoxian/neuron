@@ -1,0 +1,270 @@
+{
+  "tag_regex": [
+    {
+      "type": 1,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 2,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 3,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 4,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 5,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 6,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 7,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 8,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 9,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 10,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 11,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 12,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 13,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 14,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+(\\[\\d{1,3}(,\\d{1,3}){0,2}\\])?!.+)$"
+    },
+    {
+      "type": 22,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 23,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 24,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 25,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 26,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 27,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 28,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 29,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 30,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 31,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 32,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 33,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 34,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 35,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 36,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 37,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 38,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 39,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    },
+    {
+      "type": 40,
+      "regex": "^(ns=[0-9]+;[is]=[^;\\s]+|[0-9]+!.+)$"
+    }
+  ],
+  "group_interval": 100,
+  "endpoint_url": {
+    "name": "Endpoint URL",
+    "name_zh": "端点 URL",
+    "description": "OPCUA server endpoint url",
+    "description_zh": "OPCUA 服务器端点 URL",
+    "attribute": "required",
+    "type": "string",
+    "default": "opc.tcp://127.0.0.1:4840/",
+    "valid": {
+      "regex": "/^opc\\.tcp:\\/\\/\\S+:\\d+(\\/[\\w\\-._~:\/?#\\[\\]@!$&'()*+,;=]*)?$/",
+      "length": 256
+    }
+  },
+  "username": {
+    "name": "Username",
+    "name_zh": "用户名",
+    "description": "Username for OPC UA Server",
+    "description_zh": "OPC UA 服务器用户名",
+    "attribute": "optional",
+    "type": "string",
+    "default": "",
+    "valid": {
+      "length": 30
+    }
+  },
+  "password": {
+    "name": "Password",
+    "name_zh": "密码",
+    "description": "Password for OPC UA Server",
+    "description_zh": "OPC UA 服务器密码",
+    "attribute": "optional",
+    "type": "string",
+    "default": "",
+    "valid": {
+      "length": 30
+    }
+  },
+  "security_mode": {
+    "name": "Security Mode",
+    "name_zh": "安全策略",
+    "description": "Security mode for OPC UA connection",
+    "description_zh": "OPC UA连接的安全模式",
+    "attribute": "optional",
+    "type": "map",
+    "default": 1,
+    "valid": {
+      "map": [
+        {
+          "key": "None",
+          "value": 1
+        },
+        {
+          "key": "Sign",
+          "value": 2
+        },
+        {
+          "key": "Sign & Encrypt",
+          "value": 3
+        }
+      ]
+    }
+  },
+  "reconnect_enabled": {
+    "name": "Auto Reconnect",
+    "name_zh": "自动重连",
+    "description": "Enable auto reconnect to server when connection is lost",
+    "description_zh": "启用在连接断开时自动重连服务器",
+    "attribute": "required",
+    "type": "map",
+    "default": 1,
+    "valid": {
+      "map": [
+        {
+          "key": "Enabled",
+          "value": 1
+        },
+        {
+          "key": "Disabled",
+          "value": 0
+        }
+      ]
+    }
+  },
+  "reconnect_interval": {
+    "name": "Reconnect Interval (ms)",
+    "name_zh": "重连间隔 (ms)",
+    "description": "Time interval between reconnection attempts in milliseconds",
+    "description_zh": "重连尝试之间的时间间隔（毫秒）",
+    "attribute": "required",
+    "type": "int",
+    "default": 5000,
+    "valid": {
+      "min": 1000,
+      "max": 60000
+    }
+  },
+  "max_reconnect_attempts": {
+    "name": "Max Reconnect Attempts",
+    "name_zh": "最大重连次数",
+    "description": "Maximum number of reconnection attempts (0 for unlimited)",
+    "description_zh": "最大重连尝试次数（0表示无限制）",
+    "attribute": "required",
+    "type": "int",
+    "default": 0,
+    "valid": {
+      "min": 0,
+      "max": 100
+    }
+  },
+  "certificate": {
+    "name": "Certificate file",
+    "name_zh": "证书文件",
+    "description": "Client certificate for OPC UA authentication",
+    "description_zh": "用于OPC UA认证的客户端证书",
+    "attribute": "optional",
+    "type": "file",
+    "default": "",
+    "valid": {
+      "length": 81960
+    }
+  },
+  "private_key": {
+    "name": "Key file",
+    "name_zh": "密钥文件",
+    "description": "Private key for client certificate",
+    "description_zh": "客户端证书的私钥",
+    "attribute": "optional",
+    "type": "file",
+    "default": "",
+    "valid": {
+      "length": 81960
+    }
+  }
+}
