@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 
 #include <neuron/neuron.h>
 #include <neuron/utils/time.h>
@@ -186,9 +187,9 @@ static int driver_start(neu_plugin_t *plugin)
     
     // 使用异步方式连接到服务器
     int ret = opcua_client_connect_async(plugin->client, plugin->endpoint_url,
-                                        plugin->username, plugin->password,
-                                        plugin->certificate, plugin->private_key,
-                                        plugin->security_mode);
+                                  plugin->username, plugin->password,
+                                  plugin->certificate, plugin->private_key,
+                                  plugin->security_mode);
     
     if (ret != 0) {
         plog_error(plugin, "Failed to start async connection to OPC UA server: %s", 
@@ -198,14 +199,14 @@ static int driver_start(neu_plugin_t *plugin)
         if (plugin->reconnect_enabled) {
             plog_notice(plugin, "Auto reconnect is enabled, plugin will start and try to reconnect later");
             plugin->reconnect_attempts = 0; // 重置重连计数
-            plugin->connected = false;
-            plugin->common.link_state = NEU_NODE_LINK_STATE_DISCONNECTED;
+        plugin->connected = false;
+        plugin->common.link_state = NEU_NODE_LINK_STATE_DISCONNECTED;
             return 0; // 返回成功，让插件继续运行
         }
         
         return -1;
     }
-    
+
     // 处理异步连接，最多等待3秒
     int connect_wait_count = 30; // 30次 * 100ms = 3秒
     int connect_status = 0;
@@ -215,11 +216,11 @@ static int driver_start(neu_plugin_t *plugin)
         
         // 连接成功
         if (connect_status > 0) {
-            plugin->connected = true;
-            plugin->common.link_state = NEU_NODE_LINK_STATE_CONNECTED;
+    plugin->connected = true;
+    plugin->common.link_state = NEU_NODE_LINK_STATE_CONNECTED;
             plugin->reconnect_attempts = 0; // 重置重连计数
             plog_notice(plugin, "Successfully connected to OPC UA server: %s", plugin->endpoint_url);
-            return 0;
+    return 0;
         }
         // 连接失败
         else if (connect_status < 0) {
@@ -419,7 +420,7 @@ static int try_reconnect(neu_plugin_t *plugin)
         if (last_warning_time == 0 || 
             (current_time - last_warning_time) > 600000) {
             plog_warn(plugin, "最大重连尝试次数 (%u) 已达到，放弃重连。可通过重启插件或设置较大的最大重连次数解决。", 
-                     plugin->max_reconnect_attempts);
+                 plugin->max_reconnect_attempts);
             last_warning_time = current_time;
         }
         return -1;
@@ -483,9 +484,9 @@ static int try_reconnect(neu_plugin_t *plugin)
     
     // 使用异步方式重新连接
     int ret = opcua_client_connect_async(plugin->client, plugin->endpoint_url,
-                                        plugin->username, plugin->password,
-                                        plugin->certificate, plugin->private_key,
-                                        plugin->security_mode);
+                                  plugin->username, plugin->password,
+                                  plugin->certificate, plugin->private_key,
+                                  plugin->security_mode);
     
     if (ret != 0) {
         // 启动异步连接失败
@@ -660,7 +661,7 @@ static int driver_group_timer(neu_plugin_t *plugin, neu_plugin_group_t *group)
 
             // 读取值
             int ret = opcua_client_read_value(plugin->client, tag->node_id,
-                                             tag->ua_type, value);
+                                             tag->ua_type, value, NULL, 0);
             
             neu_dvalue_t dvalue = { 0 };
             
@@ -749,7 +750,7 @@ static int driver_write(neu_plugin_t *plugin, void *req, neu_datatag_t *tag,
     int ret = opcua_tag_to_point(tag, &point);
     if (ret != 0) {
         plog_error(plugin, "标签格式无效: %s", tag->name);
-        plugin->common.adapter_callbacks->driver.write_response(
+    plugin->common.adapter_callbacks->driver.write_response(
             plugin->common.adapter, req, NEU_ERR_TAG_ADDRESS_FORMAT_INVALID);
         return 0;
     }
@@ -817,7 +818,7 @@ static int driver_write_tags(neu_plugin_t *plugin, void *req, UT_array *tags)
     // 检查标签数组是否为空
     if (utarray_len(tags) == 0) {
         plog_warn(plugin, "尝试批量写入空标签数组");
-        plugin->common.adapter_callbacks->driver.write_response(
+    plugin->common.adapter_callbacks->driver.write_response(
             plugin->common.adapter, req, NEU_ERR_SUCCESS);
         return 0;
     }
@@ -932,7 +933,7 @@ static int driver_test_read_tag(neu_plugin_t *plugin, void *req,
 
     // Read value
     ret = opcua_client_read_value(plugin->client, point.node_id,
-                                 point.ua_type, value);
+                                 point.ua_type, value, NULL, 0);
     
     if (ret != 0) {
         plugin->common.adapter_callbacks->driver.test_read_tag_response(
@@ -1073,22 +1074,15 @@ static void plugin_group_free(neu_plugin_group_t *pgp)
  */
 static int driver_scan_tags(neu_plugin_t *plugin, void *req, char *id, char *ctx)
 {
-    plog_debug(plugin, "-------------------------------------------------------");
-    plog_debug(plugin, "scan tags started, id: %s, ctx: %s", 
-              id == NULL ? "null" : id, ctx == NULL ? "null" : ctx);
-    
-    // 输出id指针值和字符串长度以便调试
-    if (id != NULL) {
-        plog_debug(plugin, "id pointer: %p, id length: %d", (void*)id, (int)strlen(id));
-    } else {
-        plog_debug(plugin, "id pointer: NULL");
-    }
-    
     // 初始化响应结构
     neu_resp_scan_tags_t resp = { 0 };
     resp.type = NEU_TYPE_STRING;
     resp.is_array = false;
     resp.error = NEU_ERR_SUCCESS;
+    
+    // 禁用格式化截断警告
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wformat-truncation"
     
     // 设置上下文
     if (ctx != NULL) {
@@ -1096,7 +1090,6 @@ static int driver_scan_tags(neu_plugin_t *plugin, void *req, char *id, char *ctx
     }
     
     // 分配扫描标签数组
-    plog_debug(plugin, "creating scan_tags array");
     utarray_new(resp.scan_tags, &neu_scan_tag_icd);
     if (resp.scan_tags == NULL) {
         plog_error(plugin, "Failed to allocate memory for scan_tags");
@@ -1105,7 +1098,6 @@ static int driver_scan_tags(neu_plugin_t *plugin, void *req, char *id, char *ctx
     }
     
     // 检查连接状态
-    plog_debug(plugin, "checking connection status");
     if (!plugin->connected || plugin->client == NULL) {
         plog_error(plugin, "plugin not connected");
         resp.error = NEU_ERR_PLUGIN_DISCONNECTED;
@@ -1114,8 +1106,6 @@ static int driver_scan_tags(neu_plugin_t *plugin, void *req, char *id, char *ctx
     
     // 处理ID为空的情况
     if (id == NULL || strlen(id) == 0) {
-        plog_debug(plugin, "ID IS EMPTY - Manually returning three root nodes");
-        
         // 创建并添加Objects节点
         neu_scan_tag_t objects_node = { 0 };
         strncpy(objects_node.name, "Objects", NEU_TAG_NAME_LEN - 1);
@@ -1139,15 +1129,54 @@ static int driver_scan_tags(neu_plugin_t *plugin, void *req, char *id, char *ctx
         views_node.tag = 1;  // 文件夹
         views_node.is_last_layer = false;
         utarray_push_back(resp.scan_tags, &views_node);
-        
-        plog_debug(plugin, "Manually added three root nodes: Objects (i=85), Types (i=86), Views (i=87)");
     }
     // 处理ID不为空的情况
     else {
-        plog_debug(plugin, "ID IS NOT EMPTY - Browsing node: %s", id);
+        // 检查是否是数组节点请求
+        bool is_array_node = false;
+        size_t array_length = 0;
+        neu_type_e array_element_type = NEU_TYPE_STRING;
         
-        // 解析节点ID
-        UA_NodeId node_id = opcua_client_parse_node_id(plugin->client, id);
+        // 判断请求ID是否已经包含数组索引格式 "ns=X[Y];i=Z"
+        bool is_array_element_access = false;
+        char array_base_node_id[256] = {0};
+        int array_index = -1;
+        UA_NodeId node_id;
+
+        if (id != NULL && strlen(id) > 0) {
+            // 检查是否是数组元素访问格式
+            char *left_bracket = strchr(id, '[');
+            char *right_bracket = strchr(id, ']');
+            
+            if (left_bracket && right_bracket && left_bracket < right_bracket) {
+                is_array_element_access = true;
+                
+                // 解析数组索引
+                char index_str[32] = {0};
+                size_t index_len = right_bracket - left_bracket - 1;
+                if (index_len < sizeof(index_str)) {
+                    strncpy(index_str, left_bracket + 1, index_len);
+                    index_str[index_len] = '\0';
+                    array_index = atoi(index_str);
+                    
+                    // 重建基本节点ID，移除索引部分
+                    size_t ns_part_len = left_bracket - id;
+                    strncpy(array_base_node_id, id, ns_part_len);
+                    strcpy(array_base_node_id + ns_part_len, right_bracket + 1);
+                    
+                    plog_notice(plugin, "检测到数组元素访问: 基础节点ID=%s, 索引=%d", 
+                              array_base_node_id, array_index);
+                }
+            }
+        }
+
+        // 先尝试解析节点ID
+        if (is_array_element_access) {
+            // 如果是数组元素访问，解析重建的基本节点ID
+            node_id = opcua_client_parse_node_id(plugin->client, array_base_node_id, NULL, NULL);
+    } else {
+            node_id = opcua_client_parse_node_id(plugin->client, id, NULL, NULL);
+        }
         
         // 检查节点ID是否有效
         if (UA_NodeId_isNull(&node_id)) {
@@ -1156,205 +1185,440 @@ static int driver_scan_tags(neu_plugin_t *plugin, void *req, char *id, char *ctx
             goto response;
         }
         
-        // 输出解析后的node_id信息
-        UA_String nodeIdStr = UA_STRING_NULL;
-        UA_NodeId_print(&node_id, &nodeIdStr);
-        plog_debug(plugin, "Parsed node ID: %.*s", (int)nodeIdStr.length, nodeIdStr.data);
-        UA_String_clear(&nodeIdStr);
+        // 读取节点值检查是否为数组
+        UA_Variant value;
+        UA_Variant_init(&value);
         
-        // 创建浏览结果数组
-        UT_array* browse_results = NULL;
-        utarray_new(browse_results, &opcua_browse_result_icd);
-        if (browse_results == NULL) {
-            plog_error(plugin, "Failed to allocate memory for browse results");
-            resp.error = NEU_ERR_EINTERNAL;
-            UA_NodeId_clear(&node_id);
-            goto response;
+        if (opcua_client_read_value_attribute(plugin->client, &node_id, &value) == UA_STATUSCODE_GOOD) {
+            // 检查是否是数组类型
+            if (!UA_Variant_isScalar(&value) && value.arrayLength > 0) {
+                is_array_node = true;
+                array_length = value.arrayLength;
+                
+                // 获取数组元素类型
+                if (value.type) {
+                    if (value.type == &UA_TYPES[UA_TYPES_BOOLEAN]) {
+                        array_element_type = NEU_TYPE_BOOL;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_SBYTE]) {
+                        array_element_type = NEU_TYPE_INT8;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_BYTE]) {
+                        array_element_type = NEU_TYPE_UINT8;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_INT16]) {
+                        array_element_type = NEU_TYPE_INT16;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_UINT16]) {
+                        array_element_type = NEU_TYPE_UINT16;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_INT32]) {
+                        array_element_type = NEU_TYPE_INT32;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_UINT32]) {
+                        array_element_type = NEU_TYPE_UINT32;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_INT64]) {
+                        array_element_type = NEU_TYPE_INT64;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_UINT64]) {
+                        array_element_type = NEU_TYPE_UINT64;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_FLOAT]) {
+                        array_element_type = NEU_TYPE_FLOAT;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_DOUBLE]) {
+                        array_element_type = NEU_TYPE_DOUBLE;
+                    } else if (value.type == &UA_TYPES[UA_TYPES_STRING]) {
+                        array_element_type = NEU_TYPE_STRING;
+                    }
+                }
+                
+                plog_notice(plugin, "检测到数组节点: %s, 长度=%lu, 类型=%d", 
+                          id, (unsigned long)array_length, array_element_type);
+            }
+            UA_Variant_clear(&value);
         }
         
-        // 浏览节点
-        if (opcua_client_browse_node(plugin->client, &node_id, browse_results) != 0) {
-            plog_error(plugin, "Failed to browse node: %s", id);
-            resp.error = NEU_ERR_PLUGIN_READ_FAILURE;
+        // 如果是数组节点，生成数组元素列表
+        if (is_array_node && array_length > 0) {
+            plog_notice(plugin, "生成数组元素列表，数组长度: %lu", (unsigned long)array_length);
+            
+            // 获取节点ID的字符串表示
+            char *base_node_id = opcua_client_node_id_to_string(&node_id);
+            
+            if (!base_node_id) {
+                plog_error(plugin, "无法获取节点ID字符串表示");
+                UA_NodeId_clear(&node_id);
+                resp.error = NEU_ERR_EINTERNAL;
+                goto response;
+            }
+            
+            // 分解节点ID以便插入索引
+            char ns_part[128] = {0};
+            char id_part[128] = {0};
+            char array_node_name[NEU_TAG_NAME_LEN] = {0};
+            
+            // 首先尝试读取节点的显示名称属性
+            UA_LocalizedText displayName;
+            UA_LocalizedText_init(&displayName);
+            UA_StatusCode status = opcua_client_read_display_name_attribute(
+                plugin->client, &node_id, &displayName);
+            
+            if (status == UA_STATUSCODE_GOOD && displayName.text.length > 0) {
+                // 成功读取到显示名称
+                size_t name_len = displayName.text.length < NEU_TAG_NAME_LEN - 1 ? 
+                                 displayName.text.length : NEU_TAG_NAME_LEN - 1;
+                memcpy(array_node_name, displayName.text.data, name_len);
+                array_node_name[name_len] = '\0';
+                
+                plog_debug(plugin, "使用节点显示名称作为数组前缀: %s", array_node_name);
+            } else {
+                // 显示名称获取失败，尝试从ID中提取有意义的名称
+                if (id != NULL && strlen(id) > 0) {
+                    // 尝试从ID中提取名称部分
+                    char *last_slash = strrchr(id, '/');
+                    char *last_colon = strrchr(id, ':');
+                    char *last_semi = strrchr(id, ';');
+                    char *effective_pos = NULL;
+                    
+                    // 选择最后出现的分隔符作为名称起点
+                    if (last_slash && (!effective_pos || last_slash > effective_pos))
+                        effective_pos = last_slash + 1;
+                    if (last_colon && (!effective_pos || last_colon > effective_pos))
+                        effective_pos = last_colon + 1;
+                    if (last_semi && (!effective_pos || last_semi > effective_pos))
+                        effective_pos = last_semi + 1;
+                    
+                    if (effective_pos) {
+                        // 获取名称部分，去掉后缀数字和特殊字符
+                        size_t name_len = strlen(effective_pos);
+                        size_t copy_len = name_len < NEU_TAG_NAME_LEN - 1 ? name_len : NEU_TAG_NAME_LEN - 1;
+                        strncpy(array_node_name, effective_pos, copy_len);
+                        array_node_name[copy_len] = '\0';
+                        
+                        // 去掉名字末尾的特殊字符
+                        char *p = array_node_name + strlen(array_node_name) - 1;
+                        while (p >= array_node_name && !isalnum(*p)) {
+                            *p = '\0';
+                            p--;
+                        }
+                    }
+                }
+                
+                // 如果无法获取合理的名称，使用默认名称"Array"
+                if (strlen(array_node_name) == 0) {
+                    strncpy(array_node_name, "Array", NEU_TAG_NAME_LEN - 1);
+                }
+                
+                plog_debug(plugin, "无法获取节点显示名称，使用替代名称: %s", array_node_name);
+            }
+            
+            // 清理displayName
+            UA_LocalizedText_clear(&displayName);
+            
+            // 分解节点ID格式 "ns=X;i=Y"
+            char *semi_pos = strchr(base_node_id, ';');
+            if (semi_pos) {
+                size_t ns_len = semi_pos - base_node_id;
+                strncpy(ns_part, base_node_id, ns_len);
+                ns_part[ns_len] = '\0';
+                strcpy(id_part, semi_pos);
+                
+                // 生成数组元素标签
+                for (size_t i = 0; i < array_length; i++) {
+                    neu_scan_tag_t array_element = { 0 };
+                    
+                    // 设置元素名称为"显示名称_索引"
+                    snprintf(array_element.name, NEU_TAG_NAME_LEN, "%s_%lu", 
+                            array_node_name, (unsigned long)i);
+                    
+                    // 构建元素ID，格式为"ns=X[索引];i=Y"
+                    // 注意：id_part包含前导分号，所以格式字符串中不需要添加
+                    snprintf(array_element.id, sizeof(array_element.id), "%s[%lu]%s", 
+                            ns_part, (unsigned long)i, id_part);
+                    
+                    // 设置类型和标签属性
+                    array_element.type = array_element_type;
+                    array_element.tag = 0; // 叶子节点
+                    array_element.is_last_layer = true; // 最后一层
+                    
+                    // 添加到结果集
+                    utarray_push_back(resp.scan_tags, &array_element);
+                    
+                    plog_debug(plugin, "添加数组元素: 名称=%s, ID=%s, 类型=%d", 
+                              array_element.name, array_element.id, array_element.type);
+                }
+            } else {
+                // 如果节点ID格式不包含分号，使用原始格式
+                plog_warn(plugin, "节点ID格式不符合预期: %s", base_node_id);
+                
+                // 生成数组元素标签（使用原始格式）
+                for (size_t i = 0; i < array_length; i++) {
+                    neu_scan_tag_t array_element = { 0 };
+                    
+                    // 设置元素名称为"数组名称_索引"
+                    snprintf(array_element.name, NEU_TAG_NAME_LEN, "%s_%lu", 
+                            array_node_name, (unsigned long)i);
+                    
+                    // 使用原始格式: "nodeID[索引]"
+                    snprintf(array_element.id, sizeof(array_element.id), "%s[%lu]", 
+                            base_node_id, (unsigned long)i);
+                    
+                    // 设置类型和标签属性
+                    array_element.type = array_element_type;
+                    array_element.tag = 0; // 叶子节点
+                    array_element.is_last_layer = true; // 最后一层
+                    
+                    // 添加到结果集
+                    utarray_push_back(resp.scan_tags, &array_element);
+                    
+                    plog_debug(plugin, "添加数组元素: 名称=%s, ID=%s, 类型=%d", 
+                              array_element.name, array_element.id, array_element.type);
+                }
+            }
+            
+            // 释放资源
+            free(base_node_id);
+        } 
+        // 处理数组元素访问的情况
+        else if (is_array_element_access && array_index >= 0) {
+            // 读取指定索引的数组元素
+            UA_Variant element_value;
+            UA_Variant_init(&element_value);
+            
+            if (opcua_client_read_value_attribute(plugin->client, &node_id, &element_value) == UA_STATUSCODE_GOOD) {
+                // 确认是数组并且索引在范围内
+                if (!UA_Variant_isScalar(&element_value) && element_value.arrayLength > (size_t)array_index) {
+                    // 获取单个元素并设置为结果
+                    resp.is_array = false; // 单个元素不是数组
+                    
+                    // 根据数组元素类型设置结果类型
+                    if (element_value.type) {
+                        if (element_value.type == &UA_TYPES[UA_TYPES_BOOLEAN]) {
+                            resp.type = NEU_TYPE_BOOL;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_SBYTE]) {
+                            resp.type = NEU_TYPE_INT8;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_BYTE]) {
+                            resp.type = NEU_TYPE_UINT8;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_INT16]) {
+                            resp.type = NEU_TYPE_INT16;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_UINT16]) {
+                            resp.type = NEU_TYPE_UINT16;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_INT32]) {
+                            resp.type = NEU_TYPE_INT32;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_UINT32]) {
+                            resp.type = NEU_TYPE_UINT32;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_INT64]) {
+                            resp.type = NEU_TYPE_INT64;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_UINT64]) {
+                            resp.type = NEU_TYPE_UINT64;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_FLOAT]) {
+                            resp.type = NEU_TYPE_FLOAT;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_DOUBLE]) {
+                            resp.type = NEU_TYPE_DOUBLE;
+                        } else if (element_value.type == &UA_TYPES[UA_TYPES_STRING]) {
+                            resp.type = NEU_TYPE_STRING;
+                        }
+                    }
+                    
+                    plog_notice(plugin, "已访问数组元素: 基础节点=%s, 索引=%d, 类型=%d", 
+                               array_base_node_id, array_index, resp.type);
+                } else {
+                    plog_error(plugin, "数组索引超出范围或不是数组: 索引=%d, 数组长度=%lu", 
+                              array_index, (unsigned long)element_value.arrayLength);
+                    resp.error = NEU_ERR_PLUGIN_READ_FAILURE;
+                }
+                
+                UA_Variant_clear(&element_value);
+            } else {
+                plog_error(plugin, "读取数组值失败: %s", array_base_node_id);
+                resp.error = NEU_ERR_PLUGIN_READ_FAILURE;
+            }
+            
             UA_NodeId_clear(&node_id);
-            utarray_free(browse_results);
-            goto response;
         }
-        
-        // 清理节点ID
+        else {
+            // 不是数组节点，执行普通节点浏览
+            UA_NodeId_clear(&node_id); // 清理之前创建的节点ID
+            
+            // 重新解析节点ID（因为之前可能已被清理）
+            if (is_array_element_access) {
+                node_id = opcua_client_parse_node_id(plugin->client, array_base_node_id, NULL, NULL);
+            } else {
+                node_id = opcua_client_parse_node_id(plugin->client, id, NULL, NULL);
+            }
+            
+            // 创建浏览结果数组
+            UT_array* browse_results = NULL;
+    utarray_new(browse_results, &opcua_browse_result_icd);
+    if (browse_results == NULL) {
+        plog_error(plugin, "Failed to allocate memory for browse results");
+        resp.error = NEU_ERR_EINTERNAL;
         UA_NodeId_clear(&node_id);
+                goto response;
+    }
+    
+    // 浏览节点
+    if (opcua_client_browse_node(plugin->client, &node_id, browse_results) != 0) {
+                plog_error(plugin, "Failed to browse node: %s", id);
+        resp.error = NEU_ERR_PLUGIN_READ_FAILURE;
+        UA_NodeId_clear(&node_id);
+                utarray_free(browse_results);
+                goto response;
+    }
+    
+    // 清理节点ID
+    UA_NodeId_clear(&node_id);
+    
+            // 处理浏览结果
+    utarray_foreach(browse_results, opcua_browse_result_t *, result) {
+        neu_scan_tag_t scan_tag = { 0 };
         
-        // 获取浏览结果数量
-        int result_count = utarray_len(browse_results);
-        plog_debug(plugin, "Browse results count: %d", result_count);
+        // 设置标签类型 (0: 叶子节点/变量，1: 文件夹/对象/类型)
+        scan_tag.tag = (result->nodeClass == UA_NODECLASS_VARIABLE) ? 0 : 1;
         
-        // 处理浏览结果
-        utarray_foreach(browse_results, opcua_browse_result_t *, result) {
-            neu_scan_tag_t scan_tag = { 0 };
-            
-            // 设置标签类型 (0: 叶子节点/变量，1: 文件夹/对象/类型)
-            scan_tag.tag = (result->nodeClass == UA_NODECLASS_VARIABLE) ? 0 : 1;
-            
-            // 设置名称
-            if (result->displayName.length > 0) {
-                size_t name_len = result->displayName.length < NEU_TAG_NAME_LEN ? 
-                                  result->displayName.length : NEU_TAG_NAME_LEN - 1;
-                memcpy(scan_tag.name, result->displayName.data, name_len);
-                scan_tag.name[name_len] = '\0';
-                plog_debug(plugin, "using display name: %s", scan_tag.name);
-            } else if (result->browseName.name.length > 0) {
-                size_t name_len = result->browseName.name.length < NEU_TAG_NAME_LEN ? 
-                                  result->browseName.name.length : NEU_TAG_NAME_LEN - 1;
-                memcpy(scan_tag.name, result->browseName.name.data, name_len);
-                scan_tag.name[name_len] = '\0';
-                plog_debug(plugin, "using browse name: %s", scan_tag.name);
-            } else {
-                strcpy(scan_tag.name, "Unknown");
-                plog_debug(plugin, "using default name: Unknown");
-            }
-            
-            // 读取变量类型和值
-            if (result->nodeClass == UA_NODECLASS_VARIABLE) {
-                // 尝试读取数据类型
-                neu_type_e detected_type = NEU_TYPE_STRING;
-                bool is_array_type = false;  // 重命名变量以避免混淆
+        // 设置名称
+        if (result->displayName.length > 0) {
+            size_t name_len = result->displayName.length < NEU_TAG_NAME_LEN ? 
+                              result->displayName.length : NEU_TAG_NAME_LEN - 1;
+            memcpy(scan_tag.name, result->displayName.data, name_len);
+            scan_tag.name[name_len] = '\0';
+        } else if (result->browseName.name.length > 0) {
+            size_t name_len = result->browseName.name.length < NEU_TAG_NAME_LEN ? 
+                              result->browseName.name.length : NEU_TAG_NAME_LEN - 1;
+            memcpy(scan_tag.name, result->browseName.name.data, name_len);
+            scan_tag.name[name_len] = '\0';
+        } else {
+            strcpy(scan_tag.name, "Unknown");
+                }
                 
-                // 使用改进的函数获取数据类型
-                if (opcua_client_read_variable_datatype(plugin->client, &result->nodeId, &detected_type) == 0) {
-                    scan_tag.type = detected_type;
+                // 读取变量类型和值
+                if (result->nodeClass == UA_NODECLASS_VARIABLE) {
+                    // 尝试读取数据类型
+                    neu_type_e detected_type = NEU_TYPE_STRING;
+                    bool is_array_type = false;  // 重命名变量以避免混淆
                     
-                    // 设置节点ID作为地址
-                    char *node_id_str = opcua_client_node_id_to_string(&result->nodeId);
-                    if (node_id_str) {
-                        strncpy(scan_tag.id, node_id_str, sizeof(scan_tag.id) - 1);
-                        scan_tag.id[sizeof(scan_tag.id) - 1] = '\0';
-                        free(node_id_str);
-                    }
-                    
-                    // 尝试读取变量值，以获取更多信息
-                    UA_Variant value;
-                    UA_Variant_init(&value);
-                    
-                    if (opcua_client_read_value_attribute(plugin->client, &result->nodeId, &value) == UA_STATUSCODE_GOOD) {
-                        // 检查是否是数组类型
-                        if (value.arrayLength > 0) {
-                            is_array_type = true;
-                            // 注意：该数组标志会在下一层处理，而不是直接设置到scan_tag
-                            plog_debug(plugin, "Node %s is an array with length %lu", 
-                                      scan_tag.name, (unsigned long)value.arrayLength);
-                        }
-                        // 检查是否是ByteString类型
-                        else if (value.type && value.type->typeName && strcmp(value.type->typeName, "ByteString") == 0) {
-                            scan_tag.type = NEU_TYPE_BYTES;
+                    // 使用改进的函数获取数据类型
+                    if (opcua_client_read_variable_datatype(plugin->client, &result->nodeId, &detected_type) == 0) {
+                        scan_tag.type = detected_type;
+                        
+                        // 设置节点ID作为地址
+        char *node_id_str = opcua_client_node_id_to_string(&result->nodeId);
+                        if (node_id_str) {
+            strncpy(scan_tag.id, node_id_str, sizeof(scan_tag.id) - 1);
+            scan_tag.id[sizeof(scan_tag.id) - 1] = '\0';
+            free(node_id_str);
                         }
                         
-                        UA_Variant_clear(&value);
-                    }
-                } else {
-                    // 读取数据类型失败，使用默认类型
-                    // 将UA_String转换为C字符串并打印
-                    char name_buf[64] = "unknown";
-                    if (result->displayName.length > 0 && result->displayName.data != NULL) {
-                        size_t copy_len = result->displayName.length < sizeof(name_buf) - 1 ? 
-                                         result->displayName.length : sizeof(name_buf) - 1;
-                        memcpy(name_buf, result->displayName.data, copy_len);
-                        name_buf[copy_len] = '\0';
-                    }
-                    plog_debug(plugin, "Failed to read data type for node %s", name_buf);
-                    scan_tag.type = NEU_TYPE_STRING;  // 默认使用字符串类型
-                    
-                    // 仍然设置节点ID
-                    char *node_id_str = opcua_client_node_id_to_string(&result->nodeId);
-                    if (node_id_str) {
-                        strncpy(scan_tag.id, node_id_str, sizeof(scan_tag.id) - 1);
-                        scan_tag.id[sizeof(scan_tag.id) - 1] = '\0';
-                        free(node_id_str);
-                    }
-                }
-                
-                // 判断是否为特殊的变量节点，可能包含子节点
-                bool is_special_node = false;
-                
-                // 检查是否为Server节点(i=2253)或类似的特殊节点
-                if (result->nodeId.namespaceIndex == 0 && 
-                    result->nodeId.identifierType == UA_NODEIDTYPE_NUMERIC) {
-                    uint32_t id = result->nodeId.identifier.numeric;
-                    if (id == 2253) { // Server节点
-                        is_special_node = true;
-                        plog_debug(plugin, "Node %s is a special node (Server), will check for children", scan_tag.name);
-                    }
-                }
-                
-                // 检查节点是否有子节点
-                if (is_special_node) {
-                    // 尝试浏览子节点
-                    UT_array* temp_results = NULL;
-                    utarray_new(temp_results, &opcua_browse_result_icd);
-                    
-                    if (temp_results != NULL) {
-                        if (opcua_client_browse_node(plugin->client, &result->nodeId, temp_results) == 0) {
-                            int child_count = utarray_len(temp_results);
-                            if (child_count > 0) {
-                                // 有子节点，标记为非最后一层
-                                scan_tag.is_last_layer = false;
-                                plog_debug(plugin, "Node %s has %d children, marking as not last layer", scan_tag.name, child_count);
-                            } else {
-                                // 无子节点，标记为最后一层
-                                scan_tag.is_last_layer = true;
-                                plog_debug(plugin, "Node %s has no children, marking as last layer", scan_tag.name);
+                        // 尝试读取变量值，以获取更多信息
+                        UA_Variant value;
+                        UA_Variant_init(&value);
+                        
+                        if (opcua_client_read_value_attribute(plugin->client, &result->nodeId, &value) == UA_STATUSCODE_GOOD) {
+                            // 检查是否是数组类型
+                            if (value.arrayLength > 0) {
+                                is_array_type = true;
+                                // 将数组类型标记为文件夹
+                                scan_tag.tag = 1; // 设置为文件夹节点
+                                scan_tag.is_last_layer = false; // 设置为非最后一层
                             }
-                        } else {
-                            // 浏览失败，假设为最后一层
-                            scan_tag.is_last_layer = true;
-                            plog_debug(plugin, "Failed to browse children of node %s, assuming it's a last layer", scan_tag.name);
+                            // 检查是否是ByteString类型
+                            else if (value.type && value.type->typeName && strcmp(value.type->typeName, "ByteString") == 0) {
+                                scan_tag.type = NEU_TYPE_BYTES;
+                            }
+                            
+                            UA_Variant_clear(&value);
                         }
+        } else {
+                        // 读取数据类型失败，使用默认类型
+                        // 将UA_String转换为C字符串并打印
+                        char name_buf[64] = "unknown";
+                        if (result->displayName.length > 0 && result->displayName.data != NULL) {
+                            size_t copy_len = result->displayName.length < sizeof(name_buf) - 1 ? 
+                                             result->displayName.length : sizeof(name_buf) - 1;
+                            memcpy(name_buf, result->displayName.data, copy_len);
+                            name_buf[copy_len] = '\0';
+                        }
+                        plog_debug(plugin, "Failed to read data type for node %s", name_buf);
+                        scan_tag.type = NEU_TYPE_STRING;  // 默认使用字符串类型
                         
-                        utarray_free(temp_results);
-                    } else {
-                        // 内存分配失败，假设为最后一层
+                        // 仍然设置节点ID
+                        char *node_id_str = opcua_client_node_id_to_string(&result->nodeId);
+                        if (node_id_str) {
+                            strncpy(scan_tag.id, node_id_str, sizeof(scan_tag.id) - 1);
+                            scan_tag.id[sizeof(scan_tag.id) - 1] = '\0';
+                            free(node_id_str);
+                        }
+                    }
+                    
+                    // 判断是否为特殊的变量节点，可能包含子节点
+                    bool is_special_node = false;
+                    
+                    // 检查是否为Server节点(i=2253)或类似的特殊节点
+                    if (result->nodeId.namespaceIndex == 0 && 
+                        result->nodeId.identifierType == UA_NODEIDTYPE_NUMERIC) {
+                        uint32_t id = result->nodeId.identifier.numeric;
+                        if (id == 2253) { // Server节点
+                            is_special_node = true;
+                        }
+                    }
+                    
+                    // 检查节点是否有子节点
+                    if (is_special_node) {
+                        // 尝试浏览子节点
+                        UT_array* temp_results = NULL;
+                        utarray_new(temp_results, &opcua_browse_result_icd);
+                        
+                        if (temp_results != NULL) {
+                            if (opcua_client_browse_node(plugin->client, &result->nodeId, temp_results) == 0) {
+                                int child_count = utarray_len(temp_results);
+                                if (child_count > 0) {
+                                    // 有子节点，标记为非最后一层
+                                    scan_tag.is_last_layer = false;
+            } else {
+                                    // 无子节点，标记为最后一层
+                                    scan_tag.is_last_layer = true;
+                                }
+                            } else {
+                                // 浏览失败，假设为最后一层
+                                scan_tag.is_last_layer = true;
+                            }
+                            
+                            utarray_free(temp_results);
+                        } else {
+                            // 内存分配失败，假设为最后一层
+                            scan_tag.is_last_layer = true;
+                        }
+                    } else if (!is_array_type) { // 如果不是数组类型且不是特殊节点，则按普通变量处理
+                        // 普通变量节点是最后一层
                         scan_tag.is_last_layer = true;
-                        plog_debug(plugin, "Failed to allocate memory for temporary browse results, assuming node %s is a last layer", scan_tag.name);
+                    }
+                    
+                    // 记录是否是数组类型，供日志使用
+                    if (is_array_type) {
+                        // 确保数组节点的标记一致
+                        scan_tag.tag = 1; // 文件夹
+                        scan_tag.is_last_layer = false; // 非叶子节点
                     }
                 } else {
-                    // 普通变量节点是最后一层
-                    scan_tag.is_last_layer = true;
-                    plog_debug(plugin, "Node %s is a regular variable node, marking as last layer", scan_tag.name);
+                    // 非变量节点（如对象、类型等）不是最后一层
+                    scan_tag.is_last_layer = false;
+                    
+                    // 设置节点ID
+                    char *node_id_str = opcua_client_node_id_to_string(&result->nodeId);
+                    if (node_id_str) {
+                        strncpy(scan_tag.id, node_id_str, sizeof(scan_tag.id) - 1);
+                        scan_tag.id[sizeof(scan_tag.id) - 1] = '\0';
+                        free(node_id_str);
+                    }
                 }
                 
-                // 记录是否是数组类型，供日志使用
-                if (is_array_type) {
-                    plog_debug(plugin, "Node %s is array type", scan_tag.name);
-                }
-            } else {
-                // 非变量节点（如对象、类型等）不是最后一层
-                scan_tag.is_last_layer = false;
-                plog_debug(plugin, "Node %s is not a variable node (class: %d), marking as not last layer", scan_tag.name, result->nodeClass);
-                
-                // 设置节点ID
-                char *node_id_str = opcua_client_node_id_to_string(&result->nodeId);
-                if (node_id_str) {
-                    strncpy(scan_tag.id, node_id_str, sizeof(scan_tag.id) - 1);
-                    scan_tag.id[sizeof(scan_tag.id) - 1] = '\0';
-                    free(node_id_str);
-                }
+                // 添加扫描结果到数组
+                utarray_push_back(resp.scan_tags, &scan_tag);
             }
             
-            // 添加扫描结果到数组
-            utarray_push_back(resp.scan_tags, &scan_tag);
-            
-            plog_debug(plugin, "Found node: %s, id: %s, class: %d, type: %d", 
-                      scan_tag.name, scan_tag.id, result->nodeClass, scan_tag.type);
+            // 清理浏览结果
+            utarray_free(browse_results);
         }
-        
-        // 清理浏览结果
-        utarray_free(browse_results);
     }
 
 response:
-    plog_debug(plugin, "Sending scan_tags response");
+    // 恢复警告
+    #pragma GCC diagnostic pop
+    
     plugin->common.adapter_callbacks->driver.scan_tags_response(
         plugin->common.adapter, req, &resp);
     
-    plog_debug(plugin, "Scan tags completed");
     return 0;
 } 

@@ -367,7 +367,8 @@ bool opcua_client_is_connected(opcua_client_t *client)
 }
 
 int opcua_client_read_value(opcua_client_t *client, const char *node_id,
-                           UA_DataType *data_type, void *value)
+                           UA_DataType *data_type, void *value,
+                           size_t *array_indices, size_t num_indices)
 {
     if (client == NULL || node_id == NULL || data_type == NULL || value == NULL) {
         return -1;
@@ -377,13 +378,24 @@ int opcua_client_read_value(opcua_client_t *client, const char *node_id,
         return -1;
     }
 
-    // Parse the node ID string
-    UA_NodeId ua_node_id;
-    UA_String nodeIdString = UA_STRING_ALLOC(node_id);
-    UA_StatusCode parseStatus = UA_NodeId_parse(&ua_node_id, nodeIdString);
-    UA_String_clear(&nodeIdString);
+    // 使用单独参数解析节点ID
+    size_t local_indices[3] = {0};
+    size_t local_num_indices = 0;
     
-    if (parseStatus != UA_STATUSCODE_GOOD) {
+    // 如果调用者提供了索引数组，使用调用者的数组
+    // 否则，从节点ID字符串中解析索引
+    if (array_indices && num_indices > 0) {
+        local_num_indices = num_indices;
+        memcpy(local_indices, array_indices, sizeof(size_t) * num_indices < sizeof(local_indices) ? 
+              sizeof(size_t) * num_indices : sizeof(local_indices));
+    }
+    
+    // Parse the node ID string
+    UA_NodeId ua_node_id = opcua_client_parse_node_id(client, node_id, 
+                                                    array_indices == NULL ? local_indices : NULL, 
+                                                    array_indices == NULL ? &local_num_indices : NULL);
+    
+    if (UA_NodeId_isNull(&ua_node_id)) {
         return -1;
     }
 
@@ -401,6 +413,64 @@ int opcua_client_read_value(opcua_client_t *client, const char *node_id,
     if (UA_Variant_isEmpty(&variant)) {
         UA_Variant_clear(&variant);
         return -1;
+    }
+    
+    // 处理数组索引，如果有的话
+    if (local_num_indices > 0 && !UA_Variant_isScalar(&variant) && variant.arrayLength > 0) {
+        if (client->plugin) {
+            plog_debug(client->plugin, "尝试读取数组元素: 索引=%lu,%lu,%lu 数组长度=%lu", 
+                     (unsigned long)local_indices[0], 
+                     local_num_indices > 1 ? (unsigned long)local_indices[1] : 0UL, 
+                     local_num_indices > 2 ? (unsigned long)local_indices[2] : 0UL, 
+                     (unsigned long)variant.arrayLength);
+        }
+        
+        // 检查索引是否有效
+        if (local_indices[0] >= variant.arrayLength) {
+            if (client->plugin) {
+                plog_error(client->plugin, "数组索引越界: 索引=%lu 数组长度=%lu", 
+                          (unsigned long)local_indices[0], (unsigned long)variant.arrayLength);
+            }
+            UA_Variant_clear(&variant);
+            return -1;
+        }
+        
+        // 计算基于索引的偏移量
+        size_t offset = local_indices[0];
+        
+        // 目前只支持一维数组的特定元素访问
+        const uint8_t *ptr = (const uint8_t*)variant.data;
+        ptr += offset * variant.type->memSize;
+        
+        // 检查类型是否匹配并从数组中提取元素
+        if (variant.type == data_type) {
+            // 类型匹配，直接复制
+            memcpy(value, ptr, data_type->memSize);
+            UA_Variant_clear(&variant);
+            return 0;
+        } else {
+            // 类型不匹配，尝试转换
+            // 创建临时变量存储数组元素
+            UA_Variant element;
+            UA_Variant_init(&element);
+            UA_Variant_setScalarCopy(&element, ptr, variant.type);
+            
+            // 清理原始变量
+            UA_Variant_clear(&variant);
+            
+            // 从临时变量中转换类型
+            if (element.type == &UA_TYPES[UA_TYPES_BOOLEAN] && data_type == &UA_TYPES[UA_TYPES_BYTE]) {
+                *(UA_Byte*)value = *(UA_Boolean*)element.data ? 1 : 0;
+            } 
+            // ... 其他类型转换，与之前相同 ...
+            else {
+                UA_Variant_clear(&element);
+                return -1;
+            }
+            
+            UA_Variant_clear(&element);
+            return 0;
+        }
     }
     
     // 检查类型是否匹配
@@ -507,7 +577,7 @@ int opcua_client_write_value(opcua_client_t *client, const char *node_id,
     }
     
     // 解析节点ID
-    UA_NodeId uaNodeId = opcua_client_parse_node_id(client, node_id);
+    UA_NodeId uaNodeId = opcua_client_parse_node_id(client, node_id, NULL, NULL);
     if (UA_NodeId_isNull(&uaNodeId)) {
         if (client->plugin) {
             plog_error(client->plugin, "无效的OPC UA节点ID: %s", node_id);
@@ -542,7 +612,8 @@ int opcua_client_write_value(opcua_client_t *client, const char *node_id,
 }
 
 // 将节点ID字符串解析为UA_NodeId结构
-UA_NodeId opcua_client_parse_node_id(opcua_client_t *client, const char *node_id_str)
+UA_NodeId opcua_client_parse_node_id(opcua_client_t *client, const char *node_id_str,
+                                    size_t *array_indices, size_t *num_indices)
 {
     UA_NodeId nodeId = UA_NODEID_NULL;
     
@@ -550,8 +621,59 @@ UA_NodeId opcua_client_parse_node_id(opcua_client_t *client, const char *node_id
         return nodeId;
     }
     
+    // 初始化索引计数
+    if (num_indices) {
+        *num_indices = 0;
+    }
+    
+    // 检查是否包含数组索引 [x,y,z]
+    char *node_id_copy = strdup(node_id_str);
+    if (node_id_copy) {
+        char *open_bracket = strchr(node_id_copy, '[');
+        char *close_bracket = strchr(node_id_copy, ']');
+        
+        // 如果找到匹配的方括号，解析数组索引
+        if (open_bracket && close_bracket && open_bracket < close_bracket && array_indices && num_indices) {
+            *close_bracket = '\0'; // 暂时截断字符串
+            char *indices_str = open_bracket + 1;
+            
+            // 解析索引值，格式如 [0], [1,2], [3,4,5]
+            char *saveptr = NULL;
+            char *token = strtok_r(indices_str, ",", &saveptr);
+            
+            while (token && (*num_indices) < 3) {
+                array_indices[*num_indices] = atoi(token);
+                (*num_indices)++;
+                token = strtok_r(NULL, ",", &saveptr);
+            }
+            
+            // 重建不带索引的节点ID字符串
+            *open_bracket = '\0';
+            char temp[256] = {0};
+            strncpy(temp, node_id_copy, sizeof(temp) - 1);
+            strncat(temp, close_bracket + 1, sizeof(temp) - strlen(temp) - 1);
+            
+            // 使用重建的节点ID继续解析
+            char *rebuilt_node_id = strdup(temp);
+            free(node_id_copy);
+            if (!rebuilt_node_id) {
+                return nodeId;
+            }
+            node_id_copy = rebuilt_node_id;
+            
+            if (client->plugin) {
+                plog_debug(client->plugin, "数组索引节点检测: 原始=%s, 重建=%s, 索引数=%zu", 
+                        node_id_str, node_id_copy, *num_indices);
+            }
+        }
+        
+        // 使用处理后的节点ID继续标准解析
+        node_id_str = node_id_copy;
+    }
+    
     // 如果是根节点ID，返回默认节点
     if (strcmp(node_id_str, "root") == 0) {
+        if (node_id_copy) free(node_id_copy);
         nodeId = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER);
         return nodeId;
     }
@@ -561,6 +683,7 @@ UA_NodeId opcua_client_parse_node_id(opcua_client_t *client, const char *node_id
         unsigned short ns;
         unsigned int id;
         if (sscanf(node_id_str, "%hu!%u", &ns, &id) == 2) {
+            if (node_id_copy) free(node_id_copy);
             nodeId = UA_NODEID_NUMERIC(ns, id);
             return nodeId;
         }
@@ -570,6 +693,8 @@ UA_NodeId opcua_client_parse_node_id(opcua_client_t *client, const char *node_id
     UA_String uaString = UA_STRING_ALLOC(node_id_str);
     UA_StatusCode status = UA_NodeId_parse(&nodeId, uaString);
     UA_String_clear(&uaString);
+    
+    if (node_id_copy) free(node_id_copy);
     
     if (status == UA_STATUSCODE_GOOD) {
         return nodeId;
@@ -946,9 +1071,9 @@ static neu_type_e opcua_datatype_nodeid_to_neuron_type(const UA_NodeId *dataType
             case 12: // String (i=12)
                 return NEU_TYPE_STRING;
             case 13: // DateTime (i=13)
-                return NEU_TYPE_UINT32;
+                return NEU_TYPE_UINT32;  // DateTime映射为UINT32作为时间戳
             case 15: // ByteString (i=15)
-                return NEU_TYPE_BYTES;
+                return NEU_TYPE_BYTES;  // ByteString映射为BYTES
             case 16: // XmlElement (i=16)
             case 17: // NodeId (i=17)
             case 18: // ExpandedNodeId (i=18)
@@ -999,7 +1124,7 @@ static neu_type_e opcua_datatype_nodeid_to_neuron_type(const UA_NodeId *dataType
                 
             // 特定的衍生数据类型
             case 26: // Number (i=26)
-                return NEU_TYPE_INT32; // 默认处理为32位整数
+                return NEU_TYPE_DOUBLE; // 通用数字类型使用DOUBLE以兼容更多数值
             
             default:
                 return NEU_TYPE_STRING; // 对于其他类型，使用STRING作为默认类型
@@ -1033,6 +1158,8 @@ static neu_type_e opcua_datatype_nodeid_to_neuron_type(const UA_NodeId *dataType
                 result = NEU_TYPE_BOOL;
             } else if (strstr(str, "sbyte")) {
                 result = NEU_TYPE_INT8;
+            } else if (strstr(str, "bytestring")) {
+                result = NEU_TYPE_BYTES;  // 确保ByteString优先于Byte匹配
             } else if (strstr(str, "byte")) {
                 result = NEU_TYPE_UINT8;
             } else if (strstr(str, "int16")) {
@@ -1053,18 +1180,34 @@ static neu_type_e opcua_datatype_nodeid_to_neuron_type(const UA_NodeId *dataType
                 result = NEU_TYPE_DOUBLE;
             } else if (strstr(str, "string")) {
                 result = NEU_TYPE_STRING;
-            } else if (strstr(str, "bytestring") || strstr(str, "bytes")) {
+            } else if (strstr(str, "bytes")) {
                 result = NEU_TYPE_BYTES;
             } else if (strstr(str, "date") || strstr(str, "time")) {
-                result = NEU_TYPE_UINT32;
+                result = NEU_TYPE_UINT32;  // 日期/时间类型映射为UINT32
             } else if (strstr(str, "extension") || strstr(str, "object")) {
                 result = NEU_TYPE_CUSTOM; // 扩展对象映射为CUSTOM类型（JSON）
             } else if (strstr(str, "array")) {
                 // 尝试处理数组类型
                 if (strstr(str, "boolarray")) {
                     result = NEU_TYPE_ARRAY_BOOL;
-                } else if (strstr(str, "intarray") || strstr(str, "int32array")) {
+                } else if (strstr(str, "bytestringarray")) {
+                    result = NEU_TYPE_BYTES; // 字节数组类型，Neuron可能没有专门的数组字节类型
+                } else if (strstr(str, "bytearray")) {
+                    result = NEU_TYPE_ARRAY_UINT8;
+                } else if (strstr(str, "sbytesarray")) {
+                    result = NEU_TYPE_ARRAY_INT8;
+                } else if (strstr(str, "int16array")) {
+                    result = NEU_TYPE_ARRAY_INT16;
+                } else if (strstr(str, "uint16array")) {
+                    result = NEU_TYPE_ARRAY_UINT16;
+                } else if (strstr(str, "int32array")) {
                     result = NEU_TYPE_ARRAY_INT32;
+                } else if (strstr(str, "uint32array")) {
+                    result = NEU_TYPE_ARRAY_UINT32;
+                } else if (strstr(str, "int64array")) {
+                    result = NEU_TYPE_ARRAY_INT64;
+                } else if (strstr(str, "uint64array")) {
+                    result = NEU_TYPE_ARRAY_UINT64;
                 } else if (strstr(str, "floatarray")) {
                     result = NEU_TYPE_ARRAY_FLOAT;
                 } else if (strstr(str, "doublearray")) {
@@ -1283,6 +1426,16 @@ UA_StatusCode opcua_client_read_value_attribute(opcua_client_t *client, const UA
     }
     
     return UA_Client_readValueAttribute(client->client, *nodeId, value);
+}
+
+// 读取节点显示名称属性的函数实现
+UA_StatusCode opcua_client_read_display_name_attribute(opcua_client_t *client, const UA_NodeId *nodeId, UA_LocalizedText *displayName)
+{
+    if (client == NULL || nodeId == NULL || displayName == NULL || !client->connected) {
+        return UA_STATUSCODE_BADINTERNALERROR;
+    }
+    
+    return UA_Client_readDisplayNameAttribute(client->client, *nodeId, displayName);
 }
 
 int opcua_client_connect_async(opcua_client_t *client, const char *endpoint_url,

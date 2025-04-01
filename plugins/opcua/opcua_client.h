@@ -72,7 +72,8 @@ bool opcua_client_connecting(opcua_client_t *client);
 
 // Read a value from an OPC UA server
 int opcua_client_read_value(opcua_client_t *client, const char *node_id,
-                           UA_DataType *data_type, void *value);
+                           UA_DataType *data_type, void *value, 
+                           size_t *array_indices, size_t num_indices);
 
 // Write a value to an OPC UA server (placeholder for future implementation)
 int opcua_client_write_value(opcua_client_t *client, const char *node_id,
@@ -83,7 +84,8 @@ int opcua_client_browse_node(opcua_client_t *client, const UA_NodeId *node_id,
                             UT_array *results);
 
 // Parse a node ID string into a UA_NodeId
-UA_NodeId opcua_client_parse_node_id(opcua_client_t *client, const char *node_id_str);
+UA_NodeId opcua_client_parse_node_id(opcua_client_t *client, const char *node_id_str,
+                                    size_t *array_indices, size_t *num_indices);
 
 // Get a readable string representation of a UA_NodeId
 char *opcua_client_node_id_to_string(const UA_NodeId *node_id);
@@ -100,5 +102,8 @@ int opcua_client_read_variable_datatype(opcua_client_t *client, const UA_NodeId 
 
 // 读取变量值属性并返回状态码
 UA_StatusCode opcua_client_read_value_attribute(opcua_client_t *client, const UA_NodeId *nodeId, UA_Variant *value);
+
+// 读取节点的显示名称属性
+UA_StatusCode opcua_client_read_display_name_attribute(opcua_client_t *client, const UA_NodeId *nodeId, UA_LocalizedText *displayName);
 
 #endif // _NEU_PLUGIN_OPCUA_CLIENT_H_ 
