@@ -190,7 +190,7 @@ opcua_client_t *opcua_client_create(neu_plugin_t *plugin)
     }
     
     UA_ClientConfig_setDefault(config);
-    
+
     // 设置更短的超时时间，防止长时间阻塞
     config->timeout = 3000; // 3秒超时
     config->connectivityCheckInterval = 1000; // 1秒检查一次
@@ -389,7 +389,7 @@ int opcua_client_read_value(opcua_client_t *client, const char *node_id,
         memcpy(local_indices, array_indices, sizeof(size_t) * num_indices < sizeof(local_indices) ? 
               sizeof(size_t) * num_indices : sizeof(local_indices));
     }
-    
+
     // Parse the node ID string
     UA_NodeId ua_node_id = opcua_client_parse_node_id(client, node_id, 
                                                     array_indices == NULL ? local_indices : NULL, 
@@ -442,10 +442,17 @@ int opcua_client_read_value(opcua_client_t *client, const char *node_id,
         const uint8_t *ptr = (const uint8_t*)variant.data;
         ptr += offset * variant.type->memSize;
         
-        // 检查类型是否匹配并从数组中提取元素
+        // 使用UA_copy函数统一处理所有类型
         if (variant.type == data_type) {
-            // 类型匹配，直接复制
-            memcpy(value, ptr, data_type->memSize);
+            // 类型匹配，使用UA_copy复制数据
+            UA_StatusCode status = UA_copy(ptr, value, data_type);
+            if (status != UA_STATUSCODE_GOOD) {
+                if (client->plugin) {
+                    plog_error(client->plugin, "复制数组元素失败: 状态码=%d", status);
+                }
+                UA_Variant_clear(&variant);
+                return -1;
+            }
             UA_Variant_clear(&variant);
             return 0;
         } else {
@@ -462,7 +469,7 @@ int opcua_client_read_value(opcua_client_t *client, const char *node_id,
             if (element.type == &UA_TYPES[UA_TYPES_BOOLEAN] && data_type == &UA_TYPES[UA_TYPES_BYTE]) {
                 *(UA_Byte*)value = *(UA_Boolean*)element.data ? 1 : 0;
             } 
-            // ... 其他类型转换，与之前相同 ...
+            // ... 保留其他类型转换代码 ...
             else {
                 UA_Variant_clear(&element);
                 return -1;
@@ -473,10 +480,128 @@ int opcua_client_read_value(opcua_client_t *client, const char *node_id,
         }
     }
     
+    // 处理整个数组类型（当未指定索引时）
+    if (!UA_Variant_isScalar(&variant) && variant.arrayLength > 0) {
+        // 检查是否与预期类型匹配
+        if (variant.type == data_type) {
+            // 使用UA_Array_copy统一复制所有类型的数组
+            UA_StatusCode status = UA_Array_copy(
+                variant.data,
+                variant.arrayLength,
+                (void**)value,
+                variant.type
+            );
+            
+            if (status != UA_STATUSCODE_GOOD) {
+                if (client->plugin) {
+                    plog_error(client->plugin, "复制数组失败: 状态码=%d", status);
+                }
+                UA_Variant_clear(&variant);
+                return -1;
+            }
+            
+            if (client->plugin) {
+                plog_debug(client->plugin, "成功复制数组，元素数量: %zu", variant.arrayLength);
+            }
+            
+            UA_Variant_clear(&variant);
+            return 0;
+        }
+        // 类型不匹配，直接返回错误
+        else {
+            if (client->plugin) {
+                plog_error(client->plugin, "数组类型不匹配，期望%s，实际%s", 
+                          data_type->typeName, variant.type->typeName);
+            }
+            UA_Variant_clear(&variant);
+            return -1;
+        }
+    }
+    
+    // 标量类型处理：检查类型是否匹配
+    if (UA_Variant_hasScalarType(&variant, data_type)) {
+        // 使用UA_copy统一处理所有标量类型
+        UA_StatusCode status = UA_copy(variant.data, value, data_type);
+        if (status != UA_STATUSCODE_GOOD) {
+            if (client->plugin) {
+                plog_error(client->plugin, "复制标量值失败: 类型=%s, 状态码=%d", 
+                          data_type->typeName, status);
+            }
+            UA_Variant_clear(&variant);
+            return -1;
+        }
+        
+        if (client->plugin && 
+            (data_type == &UA_TYPES[UA_TYPES_STRING] || data_type == &UA_TYPES[UA_TYPES_BYTESTRING])) {
+            // 记录字符串和字节字符串类型的复制结果
+            if (data_type == &UA_TYPES[UA_TYPES_STRING]) {
+                UA_String* str = (UA_String*)value;
+                plog_debug(client->plugin, "字符串已深拷贝: 长度=%u", (unsigned)str->length);
+            } else {
+                UA_ByteString* bs = (UA_ByteString*)value;
+                plog_debug(client->plugin, "字节字符串已深拷贝: 长度=%u", (unsigned)bs->length);
+            }
+        }
+        
+        UA_Variant_clear(&variant);
+        return 0;
+    }
+    
     // 检查类型是否匹配
     if (UA_Variant_hasScalarType(&variant, data_type)) {
-        // 类型匹配，直接复制
-        memcpy(value, variant.data, data_type->memSize);
+        // 类型匹配，但需要特殊处理String和ByteString类型
+        if (data_type == &UA_TYPES[UA_TYPES_STRING]) {
+            // String类型需要深拷贝
+            UA_String* src_str = (UA_String*)variant.data;
+            UA_String* dst_str = (UA_String*)value;
+            
+            // 初始化目标字符串
+            UA_String_init(dst_str);
+            
+            // 只有当源字符串不为空时才复制内容
+            if (src_str->length > 0 && src_str->data != NULL) {
+                UA_StatusCode status = UA_String_copy(src_str, dst_str);
+                if (status != UA_STATUSCODE_GOOD) {
+                    if (client->plugin) {
+                        plog_error(client->plugin, "复制字符串失败: 长度=%u", (unsigned)src_str->length);
+                    }
+                    UA_Variant_clear(&variant);
+                    return -1;
+                }
+                
+                if (client->plugin) {
+                    plog_debug(client->plugin, "字符串已深拷贝: 长度=%u", (unsigned)dst_str->length);
+                }
+            }
+        } 
+        // 处理ByteString类型
+        else if (data_type == &UA_TYPES[UA_TYPES_BYTESTRING]) {
+            UA_ByteString* src_bs = (UA_ByteString*)variant.data;
+            UA_ByteString* dst_bs = (UA_ByteString*)value;
+            
+            // 初始化目标字节字符串
+            UA_ByteString_init(dst_bs);
+            
+            // 只有当源字节字符串不为空时才复制内容
+            if (src_bs->length > 0 && src_bs->data != NULL) {
+                UA_StatusCode status = UA_ByteString_copy(src_bs, dst_bs);
+                if (status != UA_STATUSCODE_GOOD) {
+                    if (client->plugin) {
+                        plog_error(client->plugin, "复制字节字符串失败: 长度=%u", (unsigned)src_bs->length);
+                    }
+                    UA_Variant_clear(&variant);
+                    return -1;
+                }
+                
+                if (client->plugin) {
+                    plog_debug(client->plugin, "字节字符串已深拷贝: 长度=%u", (unsigned)dst_bs->length);
+                }
+            }
+        }
+        else {
+            // 其他基本类型可以直接内存复制
+            memcpy(value, variant.data, data_type->memSize);
+        }
         UA_Variant_clear(&variant);
         return 0;
     }
@@ -550,7 +675,8 @@ int opcua_client_read_value(opcua_client_t *client, const char *node_id,
                 return -1;
             }
         }
-    } else {
+    } 
+    else {
         // 其他类型转换暂不支持
         UA_Variant_clear(&variant);
         return -1;
@@ -561,7 +687,8 @@ int opcua_client_read_value(opcua_client_t *client, const char *node_id,
 }
 
 int opcua_client_write_value(opcua_client_t *client, const char *node_id,
-                           UA_DataType *data_type, const void *value)
+                           UA_DataType *data_type, const void *value,
+                           size_t *array_indices, size_t num_indices)
 {
     if (client == NULL || client->client == NULL || node_id == NULL || 
         data_type == NULL || value == NULL) {
@@ -576,8 +703,21 @@ int opcua_client_write_value(opcua_client_t *client, const char *node_id,
         return -1;
     }
     
+    // 使用单独参数解析节点ID
+    size_t local_indices[3] = {0};
+    size_t local_num_indices = 0;
+    
+    // 如果调用者提供了索引数组，使用调用者的数组
+    if (array_indices && num_indices > 0) {
+        local_num_indices = num_indices;
+        memcpy(local_indices, array_indices, sizeof(size_t) * (num_indices < 3 ? num_indices : 3));
+    }
+    
     // 解析节点ID
-    UA_NodeId uaNodeId = opcua_client_parse_node_id(client, node_id, NULL, NULL);
+    UA_NodeId uaNodeId = opcua_client_parse_node_id(client, node_id, 
+                                                  array_indices == NULL ? local_indices : NULL, 
+                                                  array_indices == NULL ? &local_num_indices : NULL);
+    
     if (UA_NodeId_isNull(&uaNodeId)) {
         if (client->plugin) {
             plog_error(client->plugin, "无效的OPC UA节点ID: %s", node_id);
@@ -585,7 +725,95 @@ int opcua_client_write_value(opcua_client_t *client, const char *node_id,
         return -1;
     }
     
-    // 创建变量
+    // 如果有数组索引，则处理数组元素写入
+    if (local_num_indices > 0) {
+        if (client->plugin) {
+            plog_debug(client->plugin, "写入数组元素: 索引=%lu, 节点=%s", 
+                     (unsigned long)local_indices[0], node_id);
+        }
+        
+        // 首先读取当前数组值
+        UA_Variant arrayValue;
+        UA_Variant_init(&arrayValue);
+        
+        UA_StatusCode status = UA_Client_readValueAttribute(client->client, uaNodeId, &arrayValue);
+        if (status != UA_STATUSCODE_GOOD) {
+            if (client->plugin) {
+                plog_error(client->plugin, "读取数组失败，无法更新元素: %s, 状态码: %d", 
+                          node_id, status);
+            }
+            UA_NodeId_clear(&uaNodeId);
+            return -1;
+        }
+        
+        // 检查是否是数组
+        if (UA_Variant_isScalar(&arrayValue)) {
+            if (client->plugin) {
+                plog_error(client->plugin, "节点不是数组，无法按索引写入: %s", node_id);
+            }
+            UA_Variant_clear(&arrayValue);
+            UA_NodeId_clear(&uaNodeId);
+            return -1;
+        }
+        
+        // 检查索引范围
+        if (local_indices[0] >= arrayValue.arrayLength) {
+            if (client->plugin) {
+                plog_error(client->plugin, "数组索引超出范围: 索引=%lu, 长度=%lu", 
+                          (unsigned long)local_indices[0], (unsigned long)arrayValue.arrayLength);
+            }
+            UA_Variant_clear(&arrayValue);
+            UA_NodeId_clear(&uaNodeId);
+            return -1;
+        }
+        
+        // 获取数组元素类型
+        const UA_DataType *elementType = arrayValue.type;
+        
+        // 检查数据类型是否匹配
+        if (elementType != data_type) {
+            if (client->plugin) {
+                plog_error(client->plugin, "数据类型不匹配: 预期=%s, 实际=%s", 
+                          data_type->typeName, elementType->typeName);
+            }
+            UA_Variant_clear(&arrayValue);
+            UA_NodeId_clear(&uaNodeId);
+            return -1;
+        }
+        
+        // 计算数组元素偏移
+        size_t index = local_indices[0];
+        uint8_t *arrayData = (uint8_t*)arrayValue.data;
+        size_t elementSize = elementType->memSize;
+        uint8_t *elementPtr = arrayData + (index * elementSize);
+        
+        // 更新数组元素值
+        memcpy(elementPtr, value, elementSize);
+        
+        // 写回整个数组
+        status = UA_Client_writeValueAttribute(client->client, uaNodeId, &arrayValue);
+        
+        // 清理资源
+        UA_Variant_clear(&arrayValue);
+        UA_NodeId_clear(&uaNodeId);
+        
+        if (status != UA_STATUSCODE_GOOD) {
+            if (client->plugin) {
+                plog_error(client->plugin, "写入数组元素失败: %s[%lu], 状态码: %d", 
+                          node_id, (unsigned long)index, status);
+            }
+            return -1;
+        }
+        
+        if (client->plugin) {
+            plog_debug(client->plugin, "成功写入数组元素: %s[%lu]", 
+                      node_id, (unsigned long)index);
+        }
+        
+        return 0;
+    }
+    
+    // 正常写入（非数组元素）
     UA_Variant variant;
     UA_Variant_init(&variant);
     UA_Variant_setScalarCopy(&variant, value, data_type);
@@ -830,9 +1058,9 @@ char *opcua_client_node_id_to_string(const UA_NodeId *node_id)
                 } else {
                     // 默认命名空间，可以省略ns=0
                     snprintf(result, 60, "g=%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-                             guid.data1, guid.data2, guid.data3,
-                             guid.data4[0], guid.data4[1], guid.data4[2], guid.data4[3],
-                             guid.data4[4], guid.data4[5], guid.data4[6], guid.data4[7]);
+                         guid.data1, guid.data2, guid.data3,
+                         guid.data4[0], guid.data4[1], guid.data4[2], guid.data4[3],
+                         guid.data4[4], guid.data4[5], guid.data4[6], guid.data4[7]);
                 }
             }
         }

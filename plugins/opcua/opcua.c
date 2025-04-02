@@ -780,13 +780,9 @@ static int driver_write(neu_plugin_t *plugin, void *req, neu_datatag_t *tag,
     
     // 写入值
     plog_debug(plugin, "正在写入值到OPC UA节点: %s (%s)", point.name, point.node_id);
-    ret = opcua_client_write_value(plugin->client, point.node_id, point.ua_type, ua_value);
+    ret = opcua_client_write_value(plugin->client, point.node_id, point.ua_type, ua_value, NULL, 0);
     
     // 清理资源
-    if (tag->type == NEU_TYPE_STRING) {
-        // 字符串类型需要特殊清理
-        UA_String_clear((UA_String *)ua_value);
-    }
     free(ua_value);
     free(point.name);
     free(point.node_id);
@@ -861,13 +857,9 @@ static int driver_write_tags(neu_plugin_t *plugin, void *req, UT_array *tags)
         
         // 写入值
         plog_debug(plugin, "正在写入值到OPC UA节点: %s (%s)", point.name, point.node_id);
-        ret = opcua_client_write_value(plugin->client, point.node_id, point.ua_type, ua_value);
+        ret = opcua_client_write_value(plugin->client, point.node_id, point.ua_type, ua_value, NULL, 0);
         
         // 清理资源
-        if (tag_value->tag->type == NEU_TYPE_STRING) {
-            // 字符串类型需要特殊清理
-            UA_String_clear((UA_String *)ua_value);
-        }
         free(ua_value);
         free(point.name);
         free(point.node_id);

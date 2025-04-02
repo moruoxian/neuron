@@ -77,7 +77,8 @@ int opcua_client_read_value(opcua_client_t *client, const char *node_id,
 
 // Write a value to an OPC UA server (placeholder for future implementation)
 int opcua_client_write_value(opcua_client_t *client, const char *node_id,
-                            UA_DataType *data_type, const void *value);
+                            UA_DataType *data_type, const void *value,
+                            size_t *array_indices, size_t num_indices);
 
 // Browse nodes on an OPC UA server
 int opcua_client_browse_node(opcua_client_t *client, const UA_NodeId *node_id,

@@ -233,28 +233,24 @@ int opcua_convert_value_to_neu(UA_Variant *value, neu_type_e type, neu_value_u *
     }
     // 处理ByteString类型
     else if (UA_Variant_hasScalarType(value, &UA_TYPES[UA_TYPES_BYTESTRING])) {
-        UA_ByteString *bs = (UA_ByteString *)value->data;
-        // 将ByteString转换为十六进制字符串
-        size_t max_bytes = (bs->length < (sizeof(neu_value->str) - 5) / 2) ? bs->length : (sizeof(neu_value->str) - 5) / 2;
-        char temp[sizeof(neu_value->str)] = {0};
-        size_t offset = 0;
+        // 将void类型的UA_Variant数据指针转换为UA_ByteString指针
+        UA_ByteString *bs = (UA_ByteString *)(value->data);
         
-        // 添加0x前缀
-        offset += snprintf(temp + offset, sizeof(temp) - offset, "0x");
+        // 初始化为空
+        neu_value->bytes.length = 0;
         
-        // 转换为十六进制
-        for (size_t i = 0; i < max_bytes; i++) {
-            offset += snprintf(temp + offset, sizeof(temp) - offset, "%02x", bs->data[i]);
+        // 修改这里：根据neu_value_bytes_t结构体的正确定义设置bytes
+        if (bs && bs->data && bs->length > 0) {
+            // 确保不超过数组大小
+            size_t copy_length = bs->length;
+            if (copy_length > NEU_VALUE_SIZE) {
+                copy_length = NEU_VALUE_SIZE;
+            }
+            
+            // 复制字节数据到固定大小数组
+            memcpy(neu_value->bytes.bytes, bs->data, copy_length);
+            neu_value->bytes.length = (uint8_t)copy_length;
         }
-        
-        // 如果有更多字节未显示，添加省略号
-        if (bs->length > max_bytes) {
-            offset += snprintf(temp + offset, sizeof(temp) - offset, "...");
-        }
-        
-        // 复制到输出字符串
-        strncpy(neu_value->str, temp, sizeof(neu_value->str) - 1);
-        neu_value->str[sizeof(neu_value->str) - 1] = '\0';
         
         return 0;
     }
@@ -296,10 +292,28 @@ int opcua_convert_value_to_neu(UA_Variant *value, neu_type_e type, neu_value_u *
             neu_value->u8 = *(UA_Boolean *)value->data;
             break;
         case NEU_TYPE_STRING: {
-            UA_String *str = (UA_String *)value->data;
-            size_t len = str->length < sizeof(neu_value->str) - 1 ? str->length : sizeof(neu_value->str) - 1;
-            memcpy(neu_value->str, str->data, len);
-            neu_value->str[len] = '\0';
+            // 确保目标字符串初始为空
+            neu_value->str[0] = '\0';
+            
+            // 检查是否是STRING类型的标量
+            if (UA_Variant_isScalar(value) && value->type == &UA_TYPES[UA_TYPES_STRING]) {
+                UA_String *str = (UA_String*)value->data;
+                
+                // 如果源字符串有效且不为空，执行复制
+                if (str && str->data && str->length > 0) {
+                    // 计算可以复制的最大长度（考虑目标缓冲区大小）
+                    size_t copy_len = str->length < sizeof(neu_value->str) - 1 ? 
+                                     str->length : sizeof(neu_value->str) - 1;
+                    
+                    // 复制字符串数据
+                    memcpy(neu_value->str, str->data, copy_len);
+                    
+                    // 确保字符串正确终止
+                    neu_value->str[copy_len] = '\0';
+                }
+            } else {
+                return -1;
+            }
             break;
         }
         default:
@@ -353,9 +367,40 @@ int opcua_convert_neu_to_value(const neu_value_u *neu_value, neu_type_e type, vo
         break;
     case NEU_TYPE_STRING: {
         UA_String *str = (UA_String *)value;
-        *str = UA_STRING_ALLOC(neu_value->str);
-        if (str->data == NULL) {
-            return -1;
+        
+        // 初始化字符串
+        UA_String_init(str);
+        
+        // 如果源字符串不为空，执行复制
+        if (neu_value->str[0] != '\0') {
+            // 使用UA_String_fromChars替代UA_STRING宏处理const字符串
+            UA_String temp = UA_String_fromChars(neu_value->str);
+            UA_StatusCode status = UA_String_copy(&temp, str);
+            UA_String_clear(&temp); // 清理临时字符串
+            if (status != UA_STATUSCODE_GOOD) {
+                return -1;
+            }
+        }
+        break;
+    }
+    case NEU_TYPE_BYTES: {
+        UA_ByteString *bs = (UA_ByteString *)value;
+        
+        // 设置ByteString
+        if (neu_value->bytes.length > 0) {
+            // 为ByteString分配内存
+            bs->data = (UA_Byte *)UA_malloc(neu_value->bytes.length);
+            if (bs->data == NULL) {
+                return -1;
+            }
+            
+            // 复制字节数据
+            memcpy(bs->data, neu_value->bytes.bytes, neu_value->bytes.length);
+            bs->length = neu_value->bytes.length;
+        } else {
+            // 空ByteString
+            bs->data = NULL;
+            bs->length = 0;
         }
         break;
     }
