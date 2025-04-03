@@ -1,0 +1,228 @@
+{
+	"tag_regex": [
+		{
+			"type": 3,
+			"regex": "^[0-9]+!D[0-9]+(#B|#L|)$"
+		},
+		{
+			"type": 4,
+			"regex": "^[0-9]+!P[0-9]+(#B|#L|)$"
+		},
+		{
+			"type": 5,
+			"regex": "^[0-9]+!D[0-9]+(#BB|#BL|#LL|#LB|)$"
+		},
+		{
+			"type": 6,
+			"regex": "^[0-9]+!P[0-9]+(#BB|#BL|#LL|#LB|)$"
+		},
+		{
+			"type": 7,
+			"regex": "^[0-9]+!S[0-9]+(#B|#L|)$"
+		},
+		{
+			"type": 10,
+			"regex": "^[0-9]+!D[0-9]+\\.[0-7](B|L|)$"
+		},
+		{
+			"type": 12,
+			"regex": "^[0-9]+!D[0-9]+\\$[0-9]+$"
+		}
+	],
+	"group_interval": 1000,
+	"class1_timeout": {
+		"name": "Class 1 Data Timeout (ms)",
+		"name_zh": "一类数据超时时间 (ms)",
+		"description": "Timeout for class 1 data (realtime data like voltage, current). If no data is received within this time, driver will actively query.",
+		"description_zh": "一类数据超时时间（如电压、电流等实时数据）。如果在此时间内未收到数据，驱动将主动查询。",
+		"attribute": "required",
+		"type": "int",
+		"default": 10000,
+		"valid": {
+			"min": 1000,
+			"max": 60000
+		}
+	},
+	"class2_timeout": {
+		"name": "Class 2 Data Timeout (ms)",
+		"name_zh": "二类数据超时时间 (ms)",
+		"description": "Timeout for class 2 data (statistical data like energy). If no data is received within this time, driver will actively query.",
+		"description_zh": "二类数据超时时间（如累计电量等统计数据）。如果在此时间内未收到数据，驱动将主动查询。",
+		"attribute": "required",
+		"type": "int",
+		"default": 60000,
+		"valid": {
+			"min": 10000,
+			"max": 3600000
+		}
+	},
+	"connection_mode": {
+		"name": "Connection Mode",
+		"name_zh": "连接模式",
+		"description": "Neuron as the client, or as the server",
+		"description_zh": "Neuron 作为客户端或服务端",
+		"attribute": "required",
+		"type": "map",
+		"default": 0,
+		"valid": {
+			"map": [
+				{
+					"key": "Client",
+					"value": 0
+				},
+				{
+					"key": "Server",
+					"value": 1
+				}
+			]
+		}
+	},
+	"check_header": {
+		"name": "Check Header",
+		"name_zh": "校验报文头",
+		"attribute": "required",
+		"type": "map",
+		"default": 0,
+		"valid": {
+			"map": [
+				{
+					"key": "False",
+					"value": 0
+				},
+				{
+					"key": "True",
+					"value": 1
+				}
+			]
+		}
+	},
+	"device_degrade": {
+		"name": "Device Degradation",
+		"name_zh": "设备降级",
+    	"description": "Enable or disable device degradation mechanism",
+    	"description_zh": "启用或禁用设备降级机制",
+		"attribute": "required",
+		"type": "map",
+		"default": 0,
+		"valid": {
+			"map": [
+				{
+					"key": "False",
+					"value": 0
+				},
+				{
+					"key": "True",
+					"value": 1
+				}
+			]
+		}
+	},
+	"degrade_cycle": {
+		"name": "Failure Threshold for Degradation",
+		"name_zh": "降级失败阈值",
+		"description": "The number of consecutive failure cycles required to trigger device degradation",
+		"description_zh": "触发设备降级所需的连续失败周期数",
+		"attribute": "required",
+		"type": "int",
+		"default": 2,
+		"valid": {
+			"min": 1,
+			"max": 65535
+		},
+		"condition": {
+			"field": "device_degrade",
+			"value": 1
+		}
+	},
+	"degrade_time": {
+		"name": "Recovery Time After Degradation",
+		"name_zh": "降级恢复时间",
+		"description": "The time in seconds after which the device recovers from degradation",
+		"description_zh": "设备从降级中恢复所需的时间（单位：秒）",
+		"attribute": "required",
+		"type": "int",
+		"default": 600,
+		"valid": {
+			"min": 1,
+			"max": 65535
+		},
+		"condition": {
+			"field": "device_degrade",
+			"value": 1
+		}
+	},
+	"max_retries": {
+		"name": "Maximum Retry Times",
+		"name_zh": "最大重试次数",
+		"description": "The maximum number of retries after a failed attempt to send a read command",
+		"description_zh": "发送读指令失败后最大重试次数",
+		"attribute": "required",
+		"type": "int",
+		"default": 0,
+		"valid": {
+			"min": 0,
+			"max": 3
+		}
+	},
+	"retry_interval": {
+		"name": "Retry Interval (ms)",
+		"name_zh": "指令重新发送间隔 (ms)",
+		"attribute": "required",
+		"type": "int",
+		"default": 0,
+		"valid": {
+			"min": 0,
+			"max": 10000
+		}
+	},
+	"endianess": {
+		"name": "Endianess",
+		"name_zh": "字节序",
+		"description": "Tag byte order, ABCD corresponds to 1234",
+		"description_zh": "点位字节序，ABCD 对应 1234",
+		"attribute": "required",
+		"type": "map",
+		"default": 1,
+		"valid": {
+			"map": [
+				{
+					"key": "ABCD",
+					"value": 1
+				},
+				{
+					"key": "BADC",
+					"value": 2
+				},
+				{
+					"key": "DCBA",
+					"value": 3
+				},
+				{
+					"key": "CDAB",
+					"value": 4
+				}
+			]
+		}
+	},
+	"address_base": {
+		"name": "Start Address",
+		"name_zh": "开始地址",
+		"description": "Address starts from 1 or 0",
+		"description_zh": "地址从1或0开始",
+		"attribute": "required",
+		"type": "map",
+		"default": 0,
+		"valid": {
+			"map": [
+				{
+					"key": "0",
+					"value": 0
+				},
+				{
+					"key": "1",
+					"value": 1
+				}
+			]
+		}
+	}
+} 
