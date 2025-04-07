@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <time.h>
 
 #include <neuron.h>
 
@@ -230,4 +231,68 @@ const char *GB_12241_area_to_str(GB_12241_area_e area)
     default:
         return "UNKNOWN";
     }
+}
+
+// 频率值转换 (0.01Hz)
+float GB_12241_freq_to_float(GB_12241_freq_t freq)
+{
+    return freq.value * 0.01f;
+}
+
+// 电压值转换 (0.1V)
+float GB_12241_voltage_to_float(GB_12241_voltage_t voltage)
+{
+    return voltage.value * 0.1f;
+}
+
+// 电流值转换 (0.001A)
+float GB_12241_current_to_float(GB_12241_current_t current)
+{
+    uint32_t value = (current.value[2] << 16) | 
+                     (current.value[1] << 8) | 
+                     current.value[0];
+    return value * 0.001f;
+}
+
+// 功率值转换 (0.0001kW)
+float GB_12241_power_to_float(GB_12241_power_t power)
+{
+    uint32_t value = (power.value[2] << 16) | 
+                     (power.value[1] << 8) | 
+                     power.value[0];
+    return value * 0.0001f;
+}
+
+// 功率因数值转换 (0.001)
+float GB_12241_power_factor_to_float(GB_12241_power_factor_t pf)
+{
+    return pf.value * 0.001f;
+}
+
+// 电能量值转换 (0.01kWh)
+float GB_12241_energy_to_float(GB_12241_energy_t energy)
+{
+    return energy.value * 0.01f;
+}
+
+// 时标转换函数实现
+void GB_12241_timestamp_to_time(const GB_12241_timestamp_t* ts, time_t* time) {
+    struct tm tm = {0};
+    tm.tm_sec = ts->second;
+    tm.tm_min = ts->minute;
+    tm.tm_hour = ts->hour;
+    tm.tm_mday = ts->day;
+    tm.tm_mon = ts->month - 1;  // tm_mon is 0-11
+    tm.tm_year = ts->year + 100;  // years since 1900
+    *time = mktime(&tm);
+}
+
+void GB_12241_time_to_timestamp(time_t time, GB_12241_timestamp_t* ts) {
+    struct tm* tm = localtime(&time);
+    ts->second = tm->tm_sec;
+    ts->minute = tm->tm_min;
+    ts->hour = tm->tm_hour;
+    ts->day = tm->tm_mday;
+    ts->month = tm->tm_mon + 1;  // tm_mon is 0-11
+    ts->year = tm->tm_year - 100;  // years since 1900
 } 

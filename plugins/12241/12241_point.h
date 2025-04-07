@@ -20,50 +20,86 @@
 #define _NEU_M_PLUGIN_12241_POINT_H_
 
 #include <neuron.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "12241.h"
 
-typedef enum GB_12241_point_type {
-    GB_12241_POINT_UINT8   = 0, // 8位无符号整数
-    GB_12241_POINT_INT8    = 1, // 8位有符号整数
-    GB_12241_POINT_UINT16  = 2, // 16位无符号整数
-    GB_12241_POINT_INT16   = 3, // 16位有符号整数
-    GB_12241_POINT_UINT32  = 4, // 32位无符号整数
-    GB_12241_POINT_INT32   = 5, // 32位有符号整数
-    GB_12241_POINT_FLOAT32 = 6, // 32位浮点数
-    GB_12241_POINT_UINT64  = 7, // 64位无符号整数
-    GB_12241_POINT_INT64   = 8, // 64位有符号整数
-    GB_12241_POINT_FLOAT64 = 9, // 64位浮点数
-    GB_12241_POINT_BIT     = 10, // 位
-    GB_12241_POINT_BOOL    = 11, // 布尔值
-    GB_12241_POINT_STRING  = 12, // 字符串
-} GB_12241_point_type_e;
+// 数据类型定义
+typedef enum {
+    GB_12241_TYPE_BIT    = 0,  // 位
+    GB_12241_TYPE_BYTE   = 1,  // 字节
+    GB_12241_TYPE_WORD   = 2,  // 字
+    GB_12241_TYPE_DWORD  = 3,  // 双字
+    GB_12241_TYPE_FLOAT  = 4,  // 浮点数
+} GB_12241_data_type_e;
 
-typedef struct GB_12241_point {
-    uint16_t                dev_addr;        // 设备地址
-    uint16_t                area;            // 区域
-    uint16_t                reg_addr;        // 寄存器地址
-    uint8_t                 function;        // 功能码
-    uint8_t                 bit_offset;      // 位偏移
-    uint16_t                byte_size;       // 字节大小
-    GB_12241_endianess      endian;          // 字节序
-    GB_12241_point_type_e   type;            // 数据类型
-    double                  write_value;     // 写入的值
-    bool                    write_value_set; // 是否设置了写入值
+// 点位结构
+typedef struct {
+    uint16_t pn;           // 测量点号
+    uint8_t  fn;           // 功能码
+    uint16_t data_no;      // 数据项编号
+    int8_t   bit_offset;   // 位偏移，-1表示不是位操作
+    uint8_t  data_type;    // 数据类型
+    uint16_t length;       // 数据长度
+    uint16_t byte_size;    // 字节大小
 } GB_12241_point_t;
 
+/* 点位地址格式：
+ * {pn}!F{fn}#{data_no}[.{bit}]
+ * 示例：
+ * 0!F2#0.0    - P0，F2点位，数据项0，第0位(DI0)
+ * 0!F2#0.1    - P0，F2点位，数据项0，第1位(DI1)
+ * 0!F2#1      - P0，F2点位，数据项1(电池电压)
+ */
+
 // 解析点位地址字符串
-int GB_12241_parse_point(const char *str, neu_datatag_addr_t *addr,
-                       GB_12241_point_t *point, GB_12241_address_base base,
-                       GB_12241_endianess endian);
+int GB_12241_parse_point(const char *addr_str, GB_12241_point_t *point);
 
-// 解析读取数据值
-int GB_12241_value_read(GB_12241_point_t *point, uint8_t *src, void *value);
+// 创建点位地址字符串
+int GB_12241_create_point(char *addr_str, size_t size, 
+                         const GB_12241_point_t *point);
 
-// 解析写入数据值
-int GB_12241_value_write(GB_12241_point_t *point, double src, uint8_t *dest);
+// 获取数据类型的字节大小
+uint16_t GB_12241_get_type_size(uint8_t data_type);
+
+// 计算点位数据的总字节大小
+uint16_t GB_12241_calc_byte_size(uint8_t data_type, uint16_t length);
+
+// 读取单个位值
+bool GB_12241_read_bit(const uint8_t *data, uint8_t bit_offset);
+
+// 读取多个位值
+int GB_12241_read_bits(const uint8_t *data, uint16_t offset, 
+                      uint16_t length, bool *values);
+
+// 读取浮点数值
+float GB_12241_read_float(const uint8_t *data);
+
+// 读取多个浮点数值
+int GB_12241_read_floats(const uint8_t *data, uint16_t offset,
+                        uint16_t length, float *values);
+
+// 读取双字整数值
+uint32_t GB_12241_read_dword(const uint8_t *data);
+
+// 读取多个双字整数值
+int GB_12241_read_dwords(const uint8_t *data, uint16_t offset,
+                        uint16_t length, uint32_t *values);
 
 // 获取点位的数据大小
 int GB_12241_get_data_size(GB_12241_point_t *point);
+
+/* F25点位创建函数 */
+int GB_12241_create_F25_point(char *addr_str, size_t size, uint16_t dev_addr,
+                             uint16_t pn);
+
+/* F403点位创建函数 */
+int GB_12241_create_F403_point(char *addr_str, size_t size, uint16_t dev_addr,
+                              uint16_t pn);
+
+/* F503点位创建函数 */
+int GB_12241_create_F503_point(char *addr_str, size_t size, uint16_t dev_addr,
+                              uint16_t pn);
 
 #endif /* _NEU_M_PLUGIN_12241_POINT_H_ */ 

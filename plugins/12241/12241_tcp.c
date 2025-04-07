@@ -731,189 +731,41 @@ static GB_12241_data_class_t GB_12241_get_point_class(uint16_t point_id)
     }
 }
 
-// 处理主动上报的数据
-static void GB_12241_handle_spontaneous_data(neu_plugin_t *plugin, 
-                                           uint8_t *data, 
-                                           size_t len)
-{
-    GB_12241_device_t *device = neu_plugin_get_data(plugin);
-    struct GB_12241_header header = { 0 };
-    struct GB_12241_address addr = { 0 };
-    struct GB_12241_data data_block = { 0 };
+// 处理带时标的二类数据
+static void GB_12241_handle_class2_data(neu_plugin_t *plugin, 
+    const GB_12241_timestamped_data_t* data) {
     
-    neu_protocol_unpack_buf_t unpack = { 0 };
-    neu_protocol_unpack_buf_init(&unpack, data, len);
+    // 转换时标为 time_t
+    time_t timestamp;
+    GB_12241_timestamp_to_time(&data->timestamp, &timestamp);
     
-    // 解析头部
-    if (GB_12241_header_unwrap(&unpack, &header) < 0) {
-        plog_error("Parse spontaneous data header failed");
-        return;
-    }
+    // 构建带时标的数据值
+    neu_data_val_t value = {
+        .timestamp = timestamp,  // 使用数据自带的时标
+        .type = data->data_type,
+        .value = data->data,
+        .len = data->data_len
+    };
     
-    // 解析地址
-    if (GB_12241_address_unwrap(&unpack, &addr) < 0) {
-        plog_error("Parse spontaneous data address failed");
-        return;
-    }
-    
-    // 解析数据块
-    if (GB_12241_data_unwrap(&unpack, &data_block) < 0) {
-        plog_error("Parse spontaneous data block failed");
-        return;
-    }
-    
-    // 获取数据类别
-    GB_12241_data_class_t data_class = GB_12241_get_point_class(addr.start_address);
-    
-    // 记录收到数据的时间
-    uint32_t now = neu_time_ms();
-    if (data_class == GB_12241_DATA_CLASS_1) {
-        device->last_class1_time = now;
-        plog_debug("Received class 1 spontaneous data from device %d, point %d", 
-                  addr.device_addr, addr.start_address);
-    } else {
-        device->last_class2_time = now;
-        plog_debug("Received class 2 spontaneous data from device %d, point %d", 
-                  addr.device_addr, addr.start_address);
-    }
-    
-    // 处理主动上报的数据
-    neu_datatag_t tag = { 0 };
-    neu_datatag_value_t value = { 0 };
-    
-    // 构造点位地址字符串
-    char addr_str[32] = { 0 };
-    snprintf(addr_str, sizeof(addr_str), "%d!D%d#BB", 
-             addr.device_addr, addr.start_address);
-    
-    // 查找对应的点位
-    // 注意：这里需要实现一个查找点位的函数，或者使用回调通知上层
-    // 在实际实现中，可能需要调用Neuron框架的API
-    
-    // 打印主动上报的数据
-    if (plog_get_level() <= NEU_PLOG_DEBUG) {
-        char hex_buffer[1024] = {0};
-        char *p = hex_buffer;
-        for (int i = 0; i < data_block.data_len && i < 32; i++) {
-            p += snprintf(p, sizeof(hex_buffer) - (p - hex_buffer), 
-                         "%02X ", data_block.data[i]);
-        }
-        if (data_block.data_len > 32) {
-            p += snprintf(p, sizeof(hex_buffer) - (p - hex_buffer), "...");
-        }
-        plog_debug("Spontaneous data [%d]: %s", data_block.data_len, hex_buffer);
-    }
-    
-    // 如果当前没有等待的请求，可能是设备主动上报的数据
-    if (!device->waiting) {
-        plog_debug("Received spontaneous data from device %d", addr.device_addr);
-        
-        // 这里需要调用框架的数据处理回调函数
-        // 在实际实现中，需要根据addr找到对应的点位，解析数据，然后上报
-    }
+    // 上报数据
+    neu_plugin_send_value(plugin, &value);
 }
 
-// 修改处理接收数据的函数，支持主动上报
-static int GB_12241_process_recv_data(GB_12241_device_t *device, uint8_t *data, size_t len)
-{
-    GB_12241_recv_buffer_t *recv = &device->recv_buffer;
+// 修改数据接收处理函数
+static void GB_12241_handle_response(neu_plugin_t *plugin,
+    const uint8_t *buf, size_t size) {
     
-    // 更新最后通信时间（无论是哪类数据都更新）
-    uint32_t now = neu_time_ms();
-    
-    // 打印接收到的原始数据
-    plog_debug("GB_12241 RX[%zu]: %02X %02X %02X %02X ...", 
-               len, len > 0 ? data[0] : 0, len > 1 ? data[1] : 0, 
-               len > 2 ? data[2] : 0, len > 3 ? data[3] : 0);
-    
-    // 检查是否超出缓冲区大小
-    if (recv->used + len > recv->size) {
-        // 如果已找到帧头，移动数据以保留当前帧
-        if (recv->frame_found) {
-            memmove(recv->buffer, recv->buffer + recv->frame_start, 
-                    recv->used - recv->frame_start);
-            recv->used -= recv->frame_start;
-            recv->frame_start = 0;
-        } else {
-            // 没有找到帧头，清空缓冲区
-            recv->used = 0;
-        }
-        
-        // 再次检查空间是否足够
-        if (recv->used + len > recv->size) {
-            // 仍然超出缓冲区大小，截断数据
-            plog_warn("Receive buffer overflow, truncating data");
-            len = recv->size - recv->used;
-        }
+    // 判断数据类型
+    if (buf[0] == GB_12241_DATA_CLASS_2) {
+        // 二类数据，带时标
+        const GB_12241_timestamped_data_t* data = 
+            (const GB_12241_timestamped_data_t*)buf;
+            
+        GB_12241_handle_class2_data(plugin, data);
+    } else {
+        // 一类数据，实时处理
+        // ... existing code ...
     }
-    
-    // 添加数据到缓冲区
-    memcpy(recv->buffer + recv->used, data, len);
-    recv->used += len;
-    
-    // 处理所有可能的完整帧
-    while (true) {
-        // 如果没有找到帧头，尝试查找
-        if (!recv->frame_found) {
-            if (!GB_12241_find_frame_header(recv)) {
-                // 未找到帧头，等待更多数据
-                break;
-            }
-        }
-        
-        // 检查帧是否完整
-        if (!GB_12241_check_frame_complete(recv)) {
-            // 帧不完整，等待更多数据
-            break;
-        }
-        
-        // 获取帧长度
-        uint16_t frame_len = (recv->buffer[recv->frame_start + 1] << 8) | 
-                              recv->buffer[recv->frame_start + 2];
-        
-        // 打印完整的帧数据
-        if (plog_get_level() <= NEU_PLOG_DEBUG) {
-            char hex_buffer[1024] = {0};
-            char *p = hex_buffer;
-            for (uint32_t i = 0; i < frame_len && i < 32; i++) {
-                p += snprintf(p, sizeof(hex_buffer) - (p - hex_buffer), 
-                             "%02X ", recv->buffer[recv->frame_start + i]);
-            }
-            if (frame_len > 32) {
-                p += snprintf(p, sizeof(hex_buffer) - (p - hex_buffer), "...");
-            }
-            plog_debug("GB_12241 FRAME[%u]: %s", frame_len, hex_buffer);
-        }
-        
-        // 获取帧数据
-        uint8_t *frame_data = recv->buffer + recv->frame_start;
-        
-        // 获取插件指针
-        neu_plugin_t *plugin = neu_device_to_plugin(device);
-        
-        // 检查是否存在等待的请求
-        if (device->waiting) {
-            // 处理响应
-            if (plugin != NULL) {
-                GB_12241_handle_response(plugin, device, frame_data, frame_len);
-            }
-        } else {
-            // 如果没有等待的请求，可能是设备主动上报的数据
-            if (plugin != NULL) {
-                GB_12241_handle_spontaneous_data(plugin, frame_data, frame_len);
-            } else {
-                plog_error("Cannot get plugin pointer from device");
-            }
-        }
-        
-        // 移动缓冲区，处理下一帧
-        memmove(recv->buffer, recv->buffer + recv->frame_start + frame_len, 
-                recv->used - (recv->frame_start + frame_len));
-        recv->used -= (recv->frame_start + frame_len);
-        recv->frame_found = false;
-    }
-    
-    return 0;
 }
 
 // 驱动初始化

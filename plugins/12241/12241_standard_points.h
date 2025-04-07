@@ -258,6 +258,78 @@
 #define GB_12241_RESERVED_PARAM1         84    // 预留参数1
 #define GB_12241_RESERVED_PARAM2         85    // 预留参数2
 
+/* GB/T 12241协议标准点位定义 */
+
+/* 一类数据信息点定义 (AFN=0CH) */
+#define GB_12241_F2_CALENDAR          2    // 终端日历时钟
+#define GB_12241_F7_EVENT_COUNTER     7    // 终端事件计数器当前值
+#define GB_12241_F8_EVENT_FLAG        8    // 终端事件标志状态
+#define GB_12241_F10_TRAFFIC          10   // 终端与主站日月通信流量
+#define GB_12241_F25_POWER_PARAM      25   // 当前三相及总有/无功功率、功率因数，三相电压、电流
+#define GB_12241_F28_METER_STATUS     28   // 电能表状态字及变位标识
+#define GB_12241_F129_ACTIVE_ENERGY_FORWARD    129  // 当前正向有功电能示值
+#define GB_12241_F130_REACTIVE_ENERGY_FORWARD  130  // 当前正向无功电能示值
+#define GB_12241_F131_ACTIVE_ENERGY_REVERSE    131  // 当前反向有功电能示值
+#define GB_12241_F132_REACTIVE_ENERGY_REVERSE  132  // 当前反向无功电能示值
+#define GB_12241_F145_MAX_DEMAND              145  // 当月正向有最大需量及发生时间
+
+/* 水表相关信息点 */
+#define GB_12241_F402_WATER_STATUS    402  // 水表状态字及变位标识
+#define GB_12241_F403_WATER_FLOW      403  // 水表当前流量及压力
+#define GB_12241_F404_WATER_TOTAL     404  // 水表正向累计流量
+
+/* 气表相关信息点 */
+#define GB_12241_F502_GAS_STATUS      502  // 气表状态字及变位标识
+#define GB_12241_F503_GAS_FLOW        503  // 气表当前流量、压力、温度
+#define GB_12241_F504_GAS_TOTAL       504  // 气表正向累计流量
+
+/* 热表相关信息点 */
+#define GB_12241_F602_HEAT_STATUS     602  // 热表状态字及变位标识
+#define GB_12241_F603_HEAT_TOTAL      603  // 热表累计热量示值
+
+/* RTU设备相关信息点 */
+#define GB_12241_F701_RTU_DI          701  // RTU设备遥信值
+#define GB_12241_F702_RTU_AI          702  // RTU设备遥测值
+#define GB_12241_F703_RTU_ENERGY      703  // RTU设备电度值
+#define GB_12241_F704_RTU_FLOAT       704  // RTU设备浮点数值
+
+/* 12位数据长度电能示值 */
+#define GB_12241_F829_ACTIVE_ENERGY_FORWARD_12    829  // 当前正向有功电能示值(12位)
+#define GB_12241_F830_REACTIVE_ENERGY_FORWARD_12  830  // 当前正向无功电能示值(12位)
+#define GB_12241_F831_ACTIVE_ENERGY_REVERSE_12    831  // 当前反向有功电能示值(12位)
+#define GB_12241_F832_REACTIVE_ENERGY_REVERSE_12  832  // 当前反向无功电能示值(12位)
+
+/* 其他信息点 */
+#define GB_12241_F900_MAX_DEMAND      900  // 当前有功最大需量
+#define GB_12241_F901_FREQUENCY       901  // 电网频率
+
+/* F25数据结构体定义 */
+typedef struct {
+    float voltage_a;        // A相电压
+    float voltage_b;        // B相电压
+    float voltage_c;        // C相电压
+    float current_a;        // A相电流
+    float current_b;        // B相电流
+    float current_c;        // C相电流
+    float current_zero;     // 零序电流
+    float active_power;     // 总有功功率
+    float reactive_power;   // 总无功功率
+    float power_factor;     // 总功率因数
+} GB_12241_F25_data_t;
+
+/* F403数据结构体定义 */
+typedef struct {
+    float flow_rate;        // 当前流量
+    float pressure;         // 当前压力
+} GB_12241_F403_data_t;
+
+/* F503数据结构体定义 */
+typedef struct {
+    float flow_rate;        // 当前流量
+    float pressure;         // 当前压力
+    float temperature;      // 当前温度
+} GB_12241_F503_data_t;
+
 /**
  * 点位访问函数
  */

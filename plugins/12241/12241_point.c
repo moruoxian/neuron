@@ -658,31 +658,185 @@ int GB_12241_value_write(GB_12241_point_t *point, double src, uint8_t *dest)
 
 int GB_12241_get_data_size(GB_12241_point_t *point)
 {
-    switch (point->type) {
-    case GB_12241_POINT_UINT8:
-    case GB_12241_POINT_INT8:
-    case GB_12241_POINT_BIT:
-    case GB_12241_POINT_BOOL:
-        return 1;
-        
-    case GB_12241_POINT_UINT16:
-    case GB_12241_POINT_INT16:
-        return 2;
-        
-    case GB_12241_POINT_UINT32:
-    case GB_12241_POINT_INT32:
-    case GB_12241_POINT_FLOAT32:
-        return 4;
-        
-    case GB_12241_POINT_UINT64:
-    case GB_12241_POINT_INT64:
-    case GB_12241_POINT_FLOAT64:
-        return 8;
-        
-    case GB_12241_POINT_STRING:
-        return point->byte_size;
-        
-    default:
+    if (!point) {
+        return -1;
+    }
+    
+    return point->byte_size;
+}
+
+// 获取数据类型的字节大小
+uint16_t GB_12241_get_type_size(uint8_t data_type)
+{
+    switch (data_type) {
+        case GB_12241_TYPE_BIT:
+            return 1;  // 1位
+        case GB_12241_TYPE_BYTE:
+            return 1;  // 1字节
+        case GB_12241_TYPE_WORD:
+            return 2;  // 2字节
+        case GB_12241_TYPE_DWORD:
+        case GB_12241_TYPE_FLOAT:
+            return 4;  // 4字节
+        default:
+            return 0;
+    }
+}
+
+// 计算点位数据的总字节大小
+uint16_t GB_12241_calc_byte_size(uint8_t data_type, uint16_t length)
+{
+    if (data_type == GB_12241_TYPE_BIT) {
+        return (length + 7) / 8;  // 向上取整到字节
+    }
+    return GB_12241_get_type_size(data_type) * length;
+}
+
+// 解析点位地址字符串
+int GB_12241_parse_point(const char *addr_str, GB_12241_point_t *point)
+{
+    if (!addr_str || !point) {
+        return -1;
+    }
+
+    // 格式：{pn}!F{fn}#{data_no}[.{bit}]
+    unsigned int pn, fn, data_no;
+    int bit = -1;
+
+    // 尝试解析带位的格式
+    int matched = sscanf(addr_str, "%u!F%u#%u.%d", &pn, &fn, &data_no, &bit);
+    if (matched < 3) {
+        return -1;
+    }
+
+    point->pn = pn;
+    point->fn = fn;
+    point->data_no = data_no;
+    point->bit_offset = (matched == 4) ? bit : -1;
+    
+    // 根据是否有位操作设置数据类型
+    if (point->bit_offset >= 0) {
+        point->data_type = GB_12241_TYPE_BIT;
+        point->length = 1;
+    } else {
+        // 根据数据项编号设置类型
+        if (data_no == 0) {
+            // DI状态字
+            point->data_type = GB_12241_TYPE_WORD;
+            point->length = 1;
+        } else if (data_no >= 1 && data_no <= 4) {
+            // 模拟量(电池电压等)
+            point->data_type = GB_12241_TYPE_FLOAT;
+            point->length = 1;
+        } else if (data_no >= 5 && data_no <= 8) {
+            // 计数器
+            point->data_type = GB_12241_TYPE_DWORD;
+            point->length = 1;
+        } else {
+            // 未知类型
+            point->data_type = GB_12241_TYPE_BYTE;
+            point->length = 1;
+        }
+    }
+
+    point->byte_size = GB_12241_calc_byte_size(point->data_type, point->length);
+
+    return 0;
+}
+
+// 创建点位地址字符串
+int GB_12241_create_point(char *addr_str, size_t size, 
+                         const GB_12241_point_t *point)
+{
+    if (!addr_str || !point || size == 0) {
+        return -1;
+    }
+
+    if (point->bit_offset >= 0) {
+        return snprintf(addr_str, size, "%u!F%u#%u.%d",
+                       point->pn, point->fn, point->data_no, point->bit_offset);
+    } else {
+        return snprintf(addr_str, size, "%u!F%u#%u",
+                       point->pn, point->fn, point->data_no);
+    }
+}
+
+// 读取单个位值
+bool GB_12241_read_bit(const uint8_t *data, uint8_t bit_offset)
+{
+    if (!data) {
+        return false;
+    }
+
+    uint8_t byte = data[bit_offset / 8];
+    return (byte >> (bit_offset % 8)) & 0x01;
+}
+
+// 读取多个位值
+int GB_12241_read_bits(const uint8_t *data, uint16_t offset, 
+                      uint16_t length, bool *values)
+{
+    if (!data || !values || length == 0) {
+        return -1;
+    }
+
+    for (uint16_t i = 0; i < length; i++) {
+        values[i] = GB_12241_read_bit(data, offset + i);
+    }
+
+    return 0;
+}
+
+// 读取浮点数值
+float GB_12241_read_float(const uint8_t *data)
+{
+    if (!data) {
+        return 0.0f;
+    }
+
+    float value;
+    memcpy(&value, data, sizeof(float));
+    return value;
+}
+
+// 读取多个浮点数值
+int GB_12241_read_floats(const uint8_t *data, uint16_t offset,
+                        uint16_t length, float *values)
+{
+    if (!data || !values || length == 0) {
+        return -1;
+    }
+
+    for (uint16_t i = 0; i < length; i++) {
+        values[i] = GB_12241_read_float(data + offset + i * sizeof(float));
+    }
+
+    return 0;
+}
+
+// 读取双字整数值
+uint32_t GB_12241_read_dword(const uint8_t *data)
+{
+    if (!data) {
         return 0;
     }
+
+    uint32_t value;
+    memcpy(&value, data, sizeof(uint32_t));
+    return value;
+}
+
+// 读取多个双字整数值
+int GB_12241_read_dwords(const uint8_t *data, uint16_t offset,
+                        uint16_t length, uint32_t *values)
+{
+    if (!data || !values || length == 0) {
+        return -1;
+    }
+
+    for (uint16_t i = 0; i < length; i++) {
+        values[i] = GB_12241_read_dword(data + offset + i * sizeof(uint32_t));
+    }
+
+    return 0;
 } 
