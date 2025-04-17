@@ -1,37 +1,29 @@
-cmake_minimum_required(VERSION 3.12)
-project(12241-plugin C)
+cmake_minimum_required(VERSION 3.13)
 
-set(CMAKE_C_FLAGS "-fPIC -shared ${CMAKE_C_FLAGS}")
+project(neuron-plugin-12241-tcp C)
 
-add_library(12241 SHARED
-    12241.c
-    12241_point.c
-    12241_stack.c
-    12241_standard_points.c
-    12241_tcp.c
-)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/plugins)
 
-target_include_directories(12241 PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/include
-)
+set(CMAKE_C_FLAGS "-fPIC ${CMAKE_C_FLAGS}")
 
-install(TARGETS 12241
-    DESTINATION lib/neuron/plugins
-)
+# 复制JSON配置文件
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/12241-tcp.json DESTINATION ${CMAKE_BINARY_DIR}/plugins/schema/)
 
-set(LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}/plugins")
+# GB/T 12241 TCP 插件
+set(GB_12241_TCP_PLUGIN plugin-12241-tcp)
+set(GB_12241_TCP_SOURCES 12241_tcp.c 12241_point.c)
+add_library(${GB_12241_TCP_PLUGIN} SHARED ${GB_12241_TCP_SOURCES})
+target_compile_options(${GB_12241_TCP_PLUGIN} PRIVATE -fPIC)
 
-set(TWELVE241_SRC 12241.c 12241_point.c 12241_req.c 12241_stack.c)
+# 包含路径设置
+target_include_directories(${GB_12241_TCP_PLUGIN} PRIVATE ${CMAKE_SOURCE_DIR}/include/neuron )
 
-set(CMAKE_BUILD_RPATH ./)
-file(COPY ${CMAKE_SOURCE_DIR}/plugins/12241/12241-tcp.json DESTINATION ${CMAKE_BINARY_DIR}/plugins/schema/)
+# 安装规则
+install(TARGETS ${GB_12241_TCP_PLUGIN}
+        LIBRARY DESTINATION lib/neuron/plugins
+        COMPONENT neuron-plugin-12241-tcp)
 
-# 12241 TCP plugin
-set(TWELVE241_TCP_PLUGIN plugin-12241-tcp)
-set(TWELVE241_TCP_PLUGIN_SOURCES  12241_tcp.c
-                                ${TWELVE241_SRC})
-add_library(${TWELVE241_TCP_PLUGIN} SHARED)
-target_include_directories(${TWELVE241_TCP_PLUGIN} PRIVATE ${CMAKE_SOURCE_DIR}/include/neuron)
-target_sources(${TWELVE241_TCP_PLUGIN} PRIVATE ${TWELVE241_TCP_PLUGIN_SOURCES})
-target_link_libraries(${TWELVE241_TCP_PLUGIN} neuron-base) 
+install(
+    FILES 12241-tcp.json
+    DESTINATION "${CMAKE_INSTALL_PREFIX}/config/plugins"
+) 
