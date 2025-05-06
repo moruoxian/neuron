@@ -28,7 +28,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
 endif()
 
 if(NOT DISABLE_WERROR)
-  set(CMAKE_C_FLAGS "$ENV{CFLAGS} -Werror")
+  set(CMAKE_C_FLAGS "$ENV{CFLAGS} -Werror -Wno-deprecated-declarations -Wno-error=deprecated-declarations")
 endif()
 
 if(USE_GCOV)
@@ -162,6 +162,7 @@ set(NEURON_SOURCES
     plugins/restful/otel_handle.c
     plugins/restful/cid_handle.c
     plugins/restful/system_handle.c
+    plugins/restful/datalayers_handle.c
     plugins/restful/rest.c
     plugins/restful/user.c)
 
@@ -188,6 +189,7 @@ add_subdirectory(plugins/ekuiper)
 add_subdirectory(plugins/file)
 add_subdirectory(plugins/monitor)
 add_subdirectory(plugins/opcua)
+add_subdirectory(plugins/datalayers)
 
 add_subdirectory(simulator)
 
