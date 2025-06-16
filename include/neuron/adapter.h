@@ -78,6 +78,10 @@ typedef struct adapter_callbacks {
             void (*update_with_meta)(neu_adapter_t *adapter, const char *group,
                                      const char *tag, neu_dvalue_t value,
                                      neu_tag_meta_t *metas, int n_meta);
+            // update_historical for historical data
+            void (*update_historical)(neu_adapter_t *adapter, const char *group,
+                                      const char *tag, neu_dvalue_t value,
+                                      uint64_t timestamp);
             void (*write_response)(neu_adapter_t *adapter, void *req,
                                    int error);
             void (*write_responses)(neu_adapter_t *adapter, void *req,

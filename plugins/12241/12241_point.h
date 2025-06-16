@@ -501,11 +501,18 @@ typedef struct {
 
 /* 功能码Fn=145"当月正向有功最大需量及发生时间"数据结构 */
 typedef struct {
-    MAX_DEMAND_DATA  tarrif_Total;    /* 正向有功总最大需量 */
-    MAX_DEMAND_DATA  tarrif_Sharp;    /* 正向有功尖最大需量 */
-    MAX_DEMAND_DATA  tarrif_Peak;     /* 正向有功峰最大需量 */
-    MAX_DEMAND_DATA  tarrif_Ground;   /* 正向有功平最大需量 */
-    MAX_DEMAND_DATA  tarrif_Valley;   /* 正向有功谷最大需量 */
+    GB_12241_MHDMYTIME time;        // 5字节时标
+    uint8_t tarrif;                 // 1字节费率数量
+    Data_Type_23 tarrif_Total;      // 总需量值
+    GB_12241_MDHM_TIME total_time;  // 总需量发生时间
+    Data_Type_23 tarrif_Sharp;      // 尖需量值
+    GB_12241_MDHM_TIME sharp_time;  // 尖需量发生时间
+    Data_Type_23 tarrif_Peak;       // 峰需量值
+    GB_12241_MDHM_TIME peak_time;   // 峰需量发生时间
+    Data_Type_23 tarrif_Ground;     // 平需量值
+    GB_12241_MDHM_TIME ground_time; // 平需量发生时间
+    Data_Type_23 tarrif_Valley;     // 谷需量值
+    GB_12241_MDHM_TIME valley_time; // 谷需量发生时间
 } Data_ONE_F145;
 
 /* 功能码Fn=146"当月正向无功最大需量及发生时间"数据结构 */
@@ -631,11 +638,12 @@ int gb_12241_mdhm_time_getvalue(const GB_12241_MDHM_TIME* tm_data);
 void gb_12241_ymd_time_setvalue(GB_12241_YMD_TIME* tm_data, time_t t);
 time_t gb_12241_ymd_time_getvalue(const GB_12241_YMD_TIME* tm_data);
 int gb_12241_mhdmytime_getutcvalue(const GB_12241_MHDMYTIME* tm_data);
+void gb_12241_mhdmytime_setvalue(GB_12241_MHDMYTIME* tm_data, time_t t);
 
 /* GB/T12241数据处理函数 */
-int gb_12241_get_data_type(int fn, int pn, int data_index);
+///int gb_12241_get_data_type(int fn, int pn, int data_index);
 int gb_12241_parse_data(void *plugin, BYTE* buffer, int buffer_len, int fn, int pn, int data_index, void* result, int result_size);
-float gb_12241_get_value(void *plugin, void* data, int data_type);
+//float gb_12241_get_value(void *plugin, void* data, int data_type);
 
 
 /* 外部暴露的映射表 */

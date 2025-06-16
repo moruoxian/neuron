@@ -271,5 +271,73 @@
 				}
 			]
 		}
-	}
+	},
+    "polling_enabled": {
+        "name": "Enable Historical Data Polling",
+        "name_zh": "启用历史数据召测",
+        "description": "Enable or disable the historical data polling feature. If enabled, the plugin will attempt to retrieve missing historical data points.",
+        "description_zh": "启用或禁用历史数据召测功能。如果启用，插件将尝试检索缺失的历史数据点。",
+        "attribute": "required",
+        "type": "map",
+        "default": 0,
+        "valid": {
+            "map": [
+                {
+                    "key": "Disable",
+                    "value": 0
+                },
+                {
+                    "key": "Enable",
+                    "value": 1
+                }
+            ]
+        }
+    },
+    "max_poll_age": {
+        "name": "Data Staleness Threshold (seconds)",
+        "name_zh": "数据过期阈值（秒）",
+        "description": "Time in seconds after which data is considered stale. The plugin will attempt to poll historical data for tags whose last update is older than this threshold.",
+        "description_zh": "数据被视为过期的时间阈值（秒）。插件将尝试为最后更新时间早于此阈值的标签召测历史数据。",
+        "attribute": "required",
+        "type": "int",
+        "default": 86400,
+        "valid": {
+            "min": 300,
+            "max": 604800
+        },
+        "condition": {
+            "field": "polling_enabled",
+            "value": 1
+        }
+    },
+    "current_before_time": {
+        "name": "Polling End Time Offset (seconds)",
+        "name_zh": "召测截止时间偏移（秒）",
+        "description": "Offset from the current time (in seconds) to define the end point for historical data polling. This helps avoid polling for data that might not have been fully processed or stored by the device yet. E.g., if current time is 05:00:00 and offset is 300s (5min), polling will target data up to 04:55:00.",
+        "description_zh": "相对于当前时间的偏移量（秒），用于定义历史数据召测的截止点。这有助于避免召测设备可能尚未完全处理或存储的数据。例如：当前时间为05:00:00，偏移量为300秒（5分钟），则召测目标数据截止到04:55:00。",
+        "attribute": "required",
+        "type": "int",
+        "default": 300,
+        "valid": {
+            "min": 0,
+            "max": 3600
+        },
+        "condition": {
+            "field": "polling_enabled",
+            "value": 1
+        }
+    },
+    "polling_tags": {
+        "name": "Tags for Historical Polling",
+        "name_zh": "参与历史召测的标签",
+        "description": "Specify tags for historical polling as a JSON array string. Example: [{\"group\": \"group1\", \"tags\": [\"Ua\", \"Ub\"]}]",
+        "description_zh": "以JSON数组字符串方式指定参与历史召测的标签。例如：[{\"group\": \"group1\", \"tags\": [\"Ua\", \"Ub\"]}]",
+        "attribute": "required",
+        "type": "string",
+        "default": "[{\"group\":\"group2\",\"tags\":[\"DI0\",\"DI1\"]},{\"group\":\"group3\",\"tags\":[\"DI0\",\"DI1\"]}]",
+        "condition": {
+            "field": "polling_enabled",
+            "value": 1
+        }
+    }
 } 

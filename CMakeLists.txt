@@ -191,6 +191,7 @@ add_subdirectory(plugins/monitor)
 add_subdirectory(plugins/opcua)
 add_subdirectory(plugins/12241)
 add_subdirectory(plugins/datalayers)
+add_subdirectory(plugins/dmp_mqtt)
 
 add_subdirectory(simulator)
 

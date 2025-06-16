@@ -71,275 +71,7 @@
                             IS_VALID_DIGIT((d)->SFW) && IS_VALID_DIGIT((d)->BFW) && \
                             IS_VALID_DIGIT((d)->QFW) && IS_VALID_DIGIT((d)->BW))
 
-/* Fn-pn映射表定义 */
-const gb_12241_fn_pn_map_t gb_12241_fn_pn_map[] = {
-    /* 集中器自身数据点(pn=0) */
-    /* 集中器DI状态 - 遥信点 (完整139个点) */
-    {12, 0, 0, DATA_TYPE_5, "集中器DI0-实际IO"},
-    {12, 0, 1, DATA_TYPE_5, "集中器DI1-实际IO"},
-    {12, 0, 2, DATA_TYPE_5, "集中器DI2-实际IO"},
-    {12, 0, 3, DATA_TYPE_5, "集中器DI3-实际IO"},
-    {12, 0, 4, DATA_TYPE_5, "集中器DI4-外电源状态"},
-    {12, 0, 5, DATA_TYPE_5, "集中器DI5-预留DI"},
-    {12, 0, 6, DATA_TYPE_5, "集中器DI6-预留DI"},
-    {12, 0, 7, DATA_TYPE_5, "集中器DI7-预留DI"},
-    {12, 0, 8, DATA_TYPE_5, "集中器DI8-预留DI"},
-    {12, 0, 9, DATA_TYPE_5, "集中器DI9-预留DI"},
-    {12, 0, 10, DATA_TYPE_5, "集中器DI10-预留DI"},
-    /* 从DI11到DI138是外接实际设备通信状态 */
-    {12, 0, 11, DATA_TYPE_5, "集中器DI11-外设通信状态"},
-    {12, 0, 12, DATA_TYPE_5, "集中器DI12-外设通信状态"},
-    {12, 0, 13, DATA_TYPE_5, "集中器DI13-外设通信状态"},
-    {12, 0, 14, DATA_TYPE_5, "集中器DI14-外设通信状态"},
-    {12, 0, 15, DATA_TYPE_5, "集中器DI15-外设通信状态"},
-    {12, 0, 16, DATA_TYPE_5, "集中器DI16-外设通信状态"},
-    {12, 0, 17, DATA_TYPE_5, "集中器DI17-外设通信状态"},
-    {12, 0, 18, DATA_TYPE_5, "集中器DI18-外设通信状态"},
-    {12, 0, 19, DATA_TYPE_5, "集中器DI19-外设通信状态"},
-    {12, 0, 20, DATA_TYPE_5, "集中器DI20-外设通信状态"},
-    {12, 0, 21, DATA_TYPE_5, "集中器DI21-外设通信状态"},
-    {12, 0, 22, DATA_TYPE_5, "集中器DI22-外设通信状态"},
-    {12, 0, 23, DATA_TYPE_5, "集中器DI23-外设通信状态"},
-    {12, 0, 24, DATA_TYPE_5, "集中器DI24-外设通信状态"},
-    {12, 0, 25, DATA_TYPE_5, "集中器DI25-外设通信状态"},
-    {12, 0, 26, DATA_TYPE_5, "集中器DI26-外设通信状态"},
-    {12, 0, 27, DATA_TYPE_5, "集中器DI27-外设通信状态"},
-    {12, 0, 28, DATA_TYPE_5, "集中器DI28-外设通信状态"},
-    {12, 0, 29, DATA_TYPE_5, "集中器DI29-外设通信状态"},
-    {12, 0, 30, DATA_TYPE_5, "集中器DI30-外设通信状态"},
-    {12, 0, 31, DATA_TYPE_5, "集中器DI31-外设通信状态"},
-    {12, 0, 32, DATA_TYPE_5, "集中器DI32-外设通信状态"},
-    {12, 0, 33, DATA_TYPE_5, "集中器DI33-外设通信状态"},
-    {12, 0, 34, DATA_TYPE_5, "集中器DI34-外设通信状态"},
-    {12, 0, 35, DATA_TYPE_5, "集中器DI35-外设通信状态"},
-    {12, 0, 36, DATA_TYPE_5, "集中器DI36-外设通信状态"},
-    {12, 0, 37, DATA_TYPE_5, "集中器DI37-外设通信状态"},
-    {12, 0, 38, DATA_TYPE_5, "集中器DI38-外设通信状态"},
-    {12, 0, 39, DATA_TYPE_5, "集中器DI39-外设通信状态"},
-    {12, 0, 40, DATA_TYPE_5, "集中器DI40-外设通信状态"},
-    {12, 0, 41, DATA_TYPE_5, "集中器DI41-外设通信状态"},
-    {12, 0, 42, DATA_TYPE_5, "集中器DI42-外设通信状态"},
-    {12, 0, 43, DATA_TYPE_5, "集中器DI43-外设通信状态"},
-    {12, 0, 44, DATA_TYPE_5, "集中器DI44-外设通信状态"},
-    {12, 0, 45, DATA_TYPE_5, "集中器DI45-外设通信状态"},
-    {12, 0, 46, DATA_TYPE_5, "集中器DI46-外设通信状态"},
-    {12, 0, 47, DATA_TYPE_5, "集中器DI47-外设通信状态"},
-    {12, 0, 48, DATA_TYPE_5, "集中器DI48-外设通信状态"},
-    {12, 0, 49, DATA_TYPE_5, "集中器DI49-外设通信状态"},
-    {12, 0, 50, DATA_TYPE_5, "集中器DI50-外设通信状态"},
-    {12, 0, 51, DATA_TYPE_5, "集中器DI51-外设通信状态"},
-    {12, 0, 52, DATA_TYPE_5, "集中器DI52-外设通信状态"},
-    {12, 0, 53, DATA_TYPE_5, "集中器DI53-外设通信状态"},
-    {12, 0, 54, DATA_TYPE_5, "集中器DI54-外设通信状态"},
-    {12, 0, 55, DATA_TYPE_5, "集中器DI55-外设通信状态"},
-    {12, 0, 56, DATA_TYPE_5, "集中器DI56-外设通信状态"},
-    {12, 0, 57, DATA_TYPE_5, "集中器DI57-外设通信状态"},
-    {12, 0, 58, DATA_TYPE_5, "集中器DI58-外设通信状态"},
-    {12, 0, 59, DATA_TYPE_5, "集中器DI59-外设通信状态"},
-    {12, 0, 60, DATA_TYPE_5, "集中器DI60-外设通信状态"},
-    {12, 0, 61, DATA_TYPE_5, "集中器DI61-外设通信状态"},
-    {12, 0, 62, DATA_TYPE_5, "集中器DI62-外设通信状态"},
-    {12, 0, 63, DATA_TYPE_5, "集中器DI63-外设通信状态"},
-    {12, 0, 64, DATA_TYPE_5, "集中器DI64-外设通信状态"},
-    {12, 0, 65, DATA_TYPE_5, "集中器DI65-外设通信状态"},
-    {12, 0, 66, DATA_TYPE_5, "集中器DI66-外设通信状态"},
-    {12, 0, 67, DATA_TYPE_5, "集中器DI67-外设通信状态"},
-    {12, 0, 68, DATA_TYPE_5, "集中器DI68-外设通信状态"},
-    {12, 0, 69, DATA_TYPE_5, "集中器DI69-外设通信状态"},
-    {12, 0, 70, DATA_TYPE_5, "集中器DI70-外设通信状态"},
-    {12, 0, 71, DATA_TYPE_5, "集中器DI71-外设通信状态"},
-    {12, 0, 72, DATA_TYPE_5, "集中器DI72-外设通信状态"},
-    {12, 0, 73, DATA_TYPE_5, "集中器DI73-外设通信状态"},
-    {12, 0, 74, DATA_TYPE_5, "集中器DI74-外设通信状态"},
-    {12, 0, 75, DATA_TYPE_5, "集中器DI75-外设通信状态"},
-    {12, 0, 76, DATA_TYPE_5, "集中器DI76-外设通信状态"},
-    {12, 0, 77, DATA_TYPE_5, "集中器DI77-外设通信状态"},
-    {12, 0, 78, DATA_TYPE_5, "集中器DI78-外设通信状态"},
-    {12, 0, 79, DATA_TYPE_5, "集中器DI79-外设通信状态"},
-    {12, 0, 80, DATA_TYPE_5, "集中器DI80-外设通信状态"},
-    {12, 0, 81, DATA_TYPE_5, "集中器DI81-外设通信状态"},
-    {12, 0, 82, DATA_TYPE_5, "集中器DI82-外设通信状态"},
-    {12, 0, 83, DATA_TYPE_5, "集中器DI83-外设通信状态"},
-    {12, 0, 84, DATA_TYPE_5, "集中器DI84-外设通信状态"},
-    {12, 0, 85, DATA_TYPE_5, "集中器DI85-外设通信状态"},
-    {12, 0, 86, DATA_TYPE_5, "集中器DI86-外设通信状态"},
-    {12, 0, 87, DATA_TYPE_5, "集中器DI87-外设通信状态"},
-    {12, 0, 88, DATA_TYPE_5, "集中器DI88-外设通信状态"},
-    {12, 0, 89, DATA_TYPE_5, "集中器DI89-外设通信状态"},
-    {12, 0, 90, DATA_TYPE_5, "集中器DI90-外设通信状态"},
-    {12, 0, 91, DATA_TYPE_5, "集中器DI91-外设通信状态"},
-    {12, 0, 92, DATA_TYPE_5, "集中器DI92-外设通信状态"},
-    {12, 0, 93, DATA_TYPE_5, "集中器DI93-外设通信状态"},
-    {12, 0, 94, DATA_TYPE_5, "集中器DI94-外设通信状态"},
-    {12, 0, 95, DATA_TYPE_5, "集中器DI95-外设通信状态"},
-    {12, 0, 96, DATA_TYPE_5, "集中器DI96-外设通信状态"},
-    {12, 0, 97, DATA_TYPE_5, "集中器DI97-外设通信状态"},
-    {12, 0, 98, DATA_TYPE_5, "集中器DI98-外设通信状态"},
-    {12, 0, 99, DATA_TYPE_5, "集中器DI99-外设通信状态"},
-    {12, 0, 100, DATA_TYPE_5, "集中器DI100-外设通信状态"},
-    {12, 0, 101, DATA_TYPE_5, "集中器DI101-外设通信状态"},
-    {12, 0, 102, DATA_TYPE_5, "集中器DI102-外设通信状态"},
-    {12, 0, 103, DATA_TYPE_5, "集中器DI103-外设通信状态"},
-    {12, 0, 104, DATA_TYPE_5, "集中器DI104-外设通信状态"},
-    {12, 0, 105, DATA_TYPE_5, "集中器DI105-外设通信状态"},
-    {12, 0, 106, DATA_TYPE_5, "集中器DI106-外设通信状态"},
-    {12, 0, 107, DATA_TYPE_5, "集中器DI107-外设通信状态"},
-    {12, 0, 108, DATA_TYPE_5, "集中器DI108-外设通信状态"},
-    {12, 0, 109, DATA_TYPE_5, "集中器DI109-外设通信状态"},
-    {12, 0, 110, DATA_TYPE_5, "集中器DI110-外设通信状态"},
-    {12, 0, 111, DATA_TYPE_5, "集中器DI111-外设通信状态"},
-    {12, 0, 112, DATA_TYPE_5, "集中器DI112-外设通信状态"},
-    {12, 0, 113, DATA_TYPE_5, "集中器DI113-外设通信状态"},
-    {12, 0, 114, DATA_TYPE_5, "集中器DI114-外设通信状态"},
-    {12, 0, 115, DATA_TYPE_5, "集中器DI115-外设通信状态"},
-    {12, 0, 116, DATA_TYPE_5, "集中器DI116-外设通信状态"},
-    {12, 0, 117, DATA_TYPE_5, "集中器DI117-外设通信状态"},
-    {12, 0, 118, DATA_TYPE_5, "集中器DI118-外设通信状态"},
-    {12, 0, 119, DATA_TYPE_5, "集中器DI119-外设通信状态"},
-    {12, 0, 120, DATA_TYPE_5, "集中器DI120-外设通信状态"},
-    {12, 0, 121, DATA_TYPE_5, "集中器DI121-外设通信状态"},
-    {12, 0, 122, DATA_TYPE_5, "集中器DI122-外设通信状态"},
-    {12, 0, 123, DATA_TYPE_5, "集中器DI123-外设通信状态"},
-    {12, 0, 124, DATA_TYPE_5, "集中器DI124-外设通信状态"},
-    {12, 0, 125, DATA_TYPE_5, "集中器DI125-外设通信状态"},
-    {12, 0, 126, DATA_TYPE_5, "集中器DI126-外设通信状态"},
-    {12, 0, 127, DATA_TYPE_5, "集中器DI127-外设通信状态"},
-    {12, 0, 128, DATA_TYPE_5, "集中器DI128-外设通信状态"},
-    {12, 0, 129, DATA_TYPE_5, "集中器DI129-外设通信状态"},
-    {12, 0, 130, DATA_TYPE_5, "集中器DI130-外设通信状态"},
-    {12, 0, 131, DATA_TYPE_5, "集中器DI131-外设通信状态"},
-    {12, 0, 132, DATA_TYPE_5, "集中器DI132-外设通信状态"},
-    {12, 0, 133, DATA_TYPE_5, "集中器DI133-外设通信状态"},
-    {12, 0, 134, DATA_TYPE_5, "集中器DI134-外设通信状态"},
-    {12, 0, 135, DATA_TYPE_5, "集中器DI135-外设通信状态"},
-    {12, 0, 136, DATA_TYPE_5, "集中器DI136-外设通信状态"},
-    {12, 0, 137, DATA_TYPE_5, "集中器DI137-外设通信状态"},
-    {12, 0, 138, DATA_TYPE_5, "集中器DI138-外设通信状态"},
-    
-    /* 集中器AI - 遥测点 */
-    {12, 0, 139, DATA_TYPE_7, "集中器AI0-电池电压"},
-    {12, 0, 140, DATA_TYPE_7, "集中器AI1-预留"},
-    {12, 0, 141, DATA_TYPE_7, "集中器AI2-预留"},
-    {12, 0, 142, DATA_TYPE_7, "集中器AI3-预留"},
-    
-    /* 集中器CI - 脉冲计数 */
-    {12, 0, 143, DATA_TYPE_14, "集中器CI0-脉冲计数"},
-    {12, 0, 144, DATA_TYPE_14, "集中器CI1-脉冲计数"},
-    {12, 0, 145, DATA_TYPE_14, "集中器CI2-脉冲计数"},
-    {12, 0, 146, DATA_TYPE_14, "集中器CI3-脉冲计数"},
-    
-    /* 电表数据(pn=1作为模板) */
-    /* 电表遥信(28个) */
-    {28, 1, 0, DATA_TYPE_5, "电表运行状态字1"},
-    {28, 1, 1, DATA_TYPE_5, "电表运行状态字2"},
-    {28, 1, 2, DATA_TYPE_5, "电表运行状态字3"},
-    {28, 1, 3, DATA_TYPE_5, "电表运行状态字4"},
-    {28, 1, 4, DATA_TYPE_5, "电表运行状态字5"},
-    {28, 1, 5, DATA_TYPE_5, "电表运行状态字6"},
-    {28, 1, 6, DATA_TYPE_5, "电表运行状态字7"},
-    {28, 1, 7, DATA_TYPE_5, "电表运行状态字8"},
-    /* ... 其他遥信点 ... */
-    {28, 1, 27, DATA_TYPE_5, "电表运行状态字28"},
-    
-    /* 电表遥测(26个) */
-    {25, 1, 0, DATA_TYPE_9, "总有功功率"},
-    {25, 1, 1, DATA_TYPE_9, "A相有功功率"},
-    {25, 1, 2, DATA_TYPE_9, "B相有功功率"},
-    {25, 1, 3, DATA_TYPE_9, "C相有功功率"},
-    {25, 1, 4, DATA_TYPE_9, "总无功功率"},
-    {25, 1, 5, DATA_TYPE_9, "A相无功功率"},
-    {25, 1, 6, DATA_TYPE_9, "B相无功功率"},
-    {25, 1, 7, DATA_TYPE_9, "C相无功功率"},
-    {25, 1, 8, DATA_TYPE_5, "总功率因数"},
-    {25, 1, 9, DATA_TYPE_5, "A相功率因数"},
-    {25, 1, 10, DATA_TYPE_5, "B相功率因数"},
-    {25, 1, 11, DATA_TYPE_5, "C相功率因数"},
-    {25, 1, 12, DATA_TYPE_7, "A相电压"},
-    {25, 1, 13, DATA_TYPE_7, "B相电压"},
-    {25, 1, 14, DATA_TYPE_7, "C相电压"},
-    {25, 1, 15, DATA_TYPE_25, "A相电流"},
-    {25, 1, 16, DATA_TYPE_25, "B相电流"},
-    {25, 1, 17, DATA_TYPE_25, "C相电流"},
-    {25, 1, 18, DATA_TYPE_25, "零序电流"},
-    {25, 1, 19, DATA_TYPE_9, "总视在功率"},
-    {25, 1, 20, DATA_TYPE_9, "A相视在功率"},
-    {25, 1, 21, DATA_TYPE_9, "B相视在功率"},
-    {25, 1, 22, DATA_TYPE_9, "C相视在功率"},
-    {25, 1, 23, DATA_TYPE_7, "电网频率"},
-    {25, 1, 24, DATA_TYPE_9, "总谐波功率"},
-    {25, 1, 25, DATA_TYPE_9, "总基波功率"},
-    
-    /* 电表电度(20个) */
-    {129, 1, 0, DATA_TYPE_14, "正向有功总电能"},
-    {129, 1, 1, DATA_TYPE_14, "正向有功尖电能"},
-    {129, 1, 2, DATA_TYPE_14, "正向有功峰电能"},
-    {129, 1, 3, DATA_TYPE_14, "正向有功平电能"},
-    {129, 1, 4, DATA_TYPE_14, "正向有功谷电能"},
-    {130, 1, 0, DATA_TYPE_14, "正向无功总电能"},
-    {130, 1, 1, DATA_TYPE_14, "正向无功尖电能"},
-    {130, 1, 2, DATA_TYPE_14, "正向无功峰电能"},
-    {130, 1, 3, DATA_TYPE_14, "正向无功平电能"},
-    {130, 1, 4, DATA_TYPE_14, "正向无功谷电能"},
-    {131, 1, 0, DATA_TYPE_14, "反向有功总电能"},
-    {131, 1, 1, DATA_TYPE_14, "反向有功尖电能"},
-    {131, 1, 2, DATA_TYPE_14, "反向有功峰电能"},
-    {131, 1, 3, DATA_TYPE_14, "反向有功平电能"},
-    {131, 1, 4, DATA_TYPE_14, "反向有功谷电能"},
-    {132, 1, 0, DATA_TYPE_14, "反向无功总电能"},
-    {132, 1, 1, DATA_TYPE_14, "反向无功尖电能"},
-    {132, 1, 2, DATA_TYPE_14, "反向无功峰电能"},
-    {132, 1, 3, DATA_TYPE_14, "反向无功平电能"},
-    {132, 1, 4, DATA_TYPE_14, "反向无功谷电能"},
-    
-    /* 水表数据(pn=1作为模板) */
-    /* 水表遥信(24个) */
-    {402, 1, 0, DATA_TYPE_5, "水表运行状态1"},
-    /* ... 其他遥信点 ... */
-    {402, 1, 23, DATA_TYPE_5, "水表运行状态24"},
-    
-    /* 水表遥测(2个) */
-    {403, 1, 0, DATA_TYPE_7, "水表流速"},
-    {403, 1, 1, DATA_TYPE_7, "水表压力"},
-    
-    /* 水表电度(1个) */
-    {404, 1, 0, DATA_TYPE_14, "水表累积流量"},
-    
-    /* 气表数据(pn=1作为模板) */
-    /* 气表遥信(24个) */
-    {502, 1, 0, DATA_TYPE_5, "气表运行状态1"},
-    /* ... 其他遥信点 ... */
-    {502, 1, 23, DATA_TYPE_5, "气表运行状态24"},
-    
-    /* 气表遥测(4个) */
-    {503, 1, 0, DATA_TYPE_7, "气表流速"},
-    {503, 1, 1, DATA_TYPE_7, "气表压力"},
-    {503, 1, 2, DATA_TYPE_7, "气表温度"},
-    {503, 1, 3, DATA_TYPE_7, "气表密度"},
-    
-    /* 气表电度(2个) */
-    {504, 1, 0, DATA_TYPE_14, "气表标况累积流量"},
-    {504, 1, 1, DATA_TYPE_14, "气表工况累积流量"},
-    
-    /* 热量表数据(pn=1作为模板) */
-    /* 热量表遥信(24个) */
-    {602, 1, 0, DATA_TYPE_5, "热量表运行状态1"},
-    /* ... 其他遥信点 ... */
-    {602, 1, 23, DATA_TYPE_5, "热量表运行状态24"},
-    
-    /* 热量表遥测(4个) */
-    {603, 1, 0, DATA_TYPE_7, "供水温度"},
-    {603, 1, 1, DATA_TYPE_7, "回水温度"},
-    {603, 1, 2, DATA_TYPE_7, "瞬时流量"},
-    {603, 1, 3, DATA_TYPE_7, "瞬时热量"},
-    
-    /* 热量表电度(3个) */
-    {603, 1, 4, DATA_TYPE_14, "累积热量"},
-    {603, 1, 5, DATA_TYPE_14, "累积流量"},
-    {603, 1, 6, DATA_TYPE_14, "累积工作时间"}
-};
 
-/* 映射表大小 */
-const int gb_12241_fn_pn_map_size = sizeof(gb_12241_fn_pn_map) / sizeof(gb_12241_fn_pn_map_t);
 
 /* 数据类型值获取函数实现 */
 
@@ -651,17 +383,42 @@ static void set_ymd_time_values(struct tm *tm_ptr, GB_12241_YMD_TIME *tm_data)
     tm_data->DayL = tm_ptr->tm_mday % 10;
 }
 
-/* 设置时间结构与时间戳的转换函数 */
-static time_t adjust_time_to_beijing(time_t t)
+static void set_mhdmytime_values(struct tm *tm_ptr, GB_12241_MHDMYTIME *tm_data)
 {
-    /* 转换到北京时间(UTC+8) */
-    if (t >= BEIJING_TIME_OFFSET) {
-        t -= BEIJING_TIME_OFFSET;
-    } else {
-        t = 0;
+    if (!tm_ptr || !tm_data) {
+        return;
     }
-    return t;
+    
+    /* 年(2000年以后，00-99表示2000-2099年) */
+    tm_data->YearH = (tm_ptr->tm_year - 100) / 10;
+    tm_data->YearL = (tm_ptr->tm_year - 100) % 10;
+    
+    /* 月(1-12) */
+    tm_data->MonthH = (tm_ptr->tm_mon + 1) / 10;
+    tm_data->MonthL = (tm_ptr->tm_mon + 1) % 10;
+    
+    /* 日(1-31) */
+    tm_data->DayH = tm_ptr->tm_mday / 10;
+    tm_data->DayL = tm_ptr->tm_mday % 10;
+    
+    /* 时分 */
+    tm_data->HourH = tm_ptr->tm_hour / 10;
+    tm_data->HourL = tm_ptr->tm_hour % 10;
+    tm_data->MinutesH = tm_ptr->tm_min / 10;
+    tm_data->MinutesL = tm_ptr->tm_min % 10;
 }
+
+// /* 设置时间结构与时间戳的转换函数 */
+// static time_t adjust_time_to_beijing(time_t t)
+// {
+//     /* 转换到北京时间(UTC+8) */
+//     if (t >= BEIJING_TIME_OFFSET) {
+//         t -= BEIJING_TIME_OFFSET;
+//     } else {
+//         t = 0;
+//     }
+//     return t;
+// }
 
 /* 时间相关函数实现 */
 void gb_12241_time_setvalue(GB_12241_TIME* tm_data, time_t t)
@@ -672,7 +429,7 @@ void gb_12241_time_setvalue(GB_12241_TIME* tm_data, time_t t)
         return;
     }
     
-    t = adjust_time_to_beijing(t);
+    //t = adjust_time_to_beijing(t);
     if (localtime_r(&t, &tm_local) == NULL) {
         return;
     }
@@ -688,7 +445,7 @@ void gb_12241_ymdhm_time_setvalue(GB_12241_YMDHM_TIME* tm_data, time_t t)
         return;
     }
     
-    t = adjust_time_to_beijing(t);
+    //t = adjust_time_to_beijing(t);
     if (localtime_r(&t, &tm_local) == NULL) {
         return;
     }
@@ -733,7 +490,7 @@ void gb_12241_mdhm_time_setvalue(GB_12241_MDHM_TIME* tm_data, time_t t)
         return;
     }
     
-    t = adjust_time_to_beijing(t);
+    //t = adjust_time_to_beijing(t);
     if (localtime_r(&t, &tm_local) == NULL) {
         return;
     }
@@ -777,12 +534,28 @@ void gb_12241_ymd_time_setvalue(GB_12241_YMD_TIME* tm_data, time_t t)
         return;
     }
     
-    t = adjust_time_to_beijing(t);
+    //t = adjust_time_to_beijing(t);
     if (localtime_r(&t, &tm_local) == NULL) {
         return;
     }
     
     set_ymd_time_values(&tm_local, tm_data);
+}
+
+void gb_12241_mhdmytime_setvalue(GB_12241_MHDMYTIME* tm_data, time_t t)
+{
+    struct tm tm_local;
+    
+    if (!tm_data) {
+        return;
+    }
+    
+    //t = adjust_time_to_beijing(t);
+    if (localtime_r(&t, &tm_local) == NULL) {
+        return;
+    }
+    
+    set_mhdmytime_values(&tm_local, tm_data);
 }
 
 time_t gb_12241_ymd_time_getvalue(const GB_12241_YMD_TIME* tm_data)
@@ -816,36 +589,36 @@ time_t gb_12241_ymd_time_getvalue(const GB_12241_YMD_TIME* tm_data)
 
 /* 数据解析函数实现 */
 
-/* 根据功能码和点号获取数据类型 */
-int gb_12241_get_data_type(int fn, int pn, int data_index)
-{
-    int i;
+/* 根据功能码和点号获取数据类型  弃用*/
+// int gb_12241_get_data_type(int fn, int pn, int data_index)
+// {
+//     int i;
 
-    // 处理集中器特殊数据类型 (F12)
-    if (fn == 12 && pn == 0) {
-        if (data_index >= 0 && data_index <= 138) {
-            // DI数据
-            return DATA_TYPE_F12_DI;
-        } else if (data_index >= 139 && data_index <= 142) {
-            // AI数据
-            return DATA_TYPE_F12_AI;
-        } else if (data_index >= 143 && data_index <= 146) {
-            // CI数据
-            return DATA_TYPE_F12_CI;
-        }
-    }
+//     // 处理集中器特殊数据类型 (F12)
+//     if (fn == 12 && pn == 0) {
+//         if (data_index >= 0 && data_index <= 138) {
+//             // DI数据
+//             return DATA_TYPE_F12_DI;
+//         } else if (data_index >= 139 && data_index <= 142) {
+//             // AI数据
+//             return DATA_TYPE_F12_AI;
+//         } else if (data_index >= 143 && data_index <= 146) {
+//             // CI数据
+//             return DATA_TYPE_F12_CI;
+//         }
+//     }
     
-    // 默认映射
-    for (i = 0; i < gb_12241_fn_pn_map_size; i++) {
-        if (gb_12241_fn_pn_map[i].fn == fn && 
-            ((pn == 0 && gb_12241_fn_pn_map[i].pn == 0) || /* 集中器数据必须精确匹配pn=0 */
-             (pn > 0 && gb_12241_fn_pn_map[i].pn == 1)) && /* 其他设备使用pn=1的模板 */
-            gb_12241_fn_pn_map[i].data_index == data_index) {
-            return gb_12241_fn_pn_map[i].data_type;
-        }
-    }
-    return -1; /* 未找到映射 */
-}
+//     // 默认映射
+//     for (i = 0; i < gb_12241_fn_pn_map_size; i++) {
+//         if (gb_12241_fn_pn_map[i].fn == fn && 
+//             ((pn == 0 && gb_12241_fn_pn_map[i].pn == 0) || /* 集中器数据必须精确匹配pn=0 */
+//              (pn > 0 && gb_12241_fn_pn_map[i].pn == 1)) && /* 其他设备使用pn=1的模板 */
+//             gb_12241_fn_pn_map[i].data_index == data_index) {
+//             return gb_12241_fn_pn_map[i].data_type;
+//         }
+//     }
+//     return -1; /* 未找到映射 */
+// }
 
 /* 检查缓冲区大小并复制数据宏 */
 #define CHECK_AND_COPY(type) do { \
@@ -855,85 +628,85 @@ int gb_12241_get_data_type(int fn, int pn, int data_index)
     return 0; \
 } while(0)
 
-/* 简化的日志函数 - 在无法使用plog_error的情况下 */
-static void log_error_internal(const char* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    fprintf(stderr, "[12241_ERROR] ");
-    vfprintf(stderr, format, args);
-    fprintf(stderr, "\n");
-    va_end(args);
-}
+// /* 简化的日志函数 - 在无法使用plog_error的情况下 */
+// static void log_error_internal(const char* format, ...)
+// {
+//     va_list args;
+//     va_start(args, format);
+//     fprintf(stderr, "[12241_ERROR] ");
+//     vfprintf(stderr, format, args);
+//     fprintf(stderr, "\n");
+//     va_end(args);
+// }
 
-/* 获取解析后的数据值 */
-float gb_12241_get_value(void *plugin, void* data, int data_type)
-{
-    (void)plugin; /* 此函数只使用plugin指针进行日志记录，不访问其内部结构 */
+// /* 获取解析后的数据值  弃用*/
+// float gb_12241_get_value(void *plugin, void* data, int data_type)
+// {
+//     (void)plugin; /* 此函数只使用plugin指针进行日志记录，不访问其内部结构 */
     
-    if (!data) {
-        log_error_internal("数据指针为NULL");
-        return 0.0f;
-    }
+//     if (!data) {
+//         log_error_internal("数据指针为NULL");
+//         return 0.0f;
+//     }
     
-    switch (data_type) {
-        case DATA_TYPE_5:
-            return data_type_5_getvalue((Data_Type_5*)data);
+//     switch (data_type) {
+//         case DATA_TYPE_5:
+//             return data_type_5_getvalue((Data_Type_5*)data);
             
-        case DATA_TYPE_6:
-            return data_type_6_getvalue((Data_Type_6*)data);
+//         case DATA_TYPE_6:
+//             return data_type_6_getvalue((Data_Type_6*)data);
             
-        case DATA_TYPE_7:
-            return data_type_7_getvalue((Data_Type_7*)data);
+//         case DATA_TYPE_7:
+//             return data_type_7_getvalue((Data_Type_7*)data);
             
-        case DATA_TYPE_8:
-            return (float)data_type_8_getvalue((Data_Type_8*)data);
+//         case DATA_TYPE_8:
+//             return (float)data_type_8_getvalue((Data_Type_8*)data);
             
-        case DATA_TYPE_9:
-            return data_type_9_getvalue((Data_Type_9*)data);
+//         case DATA_TYPE_9:
+//             return data_type_9_getvalue((Data_Type_9*)data);
             
-        case DATA_TYPE_11:
-            return data_type_11_getvalue((Data_Type_11*)data);
+//         case DATA_TYPE_11:
+//             return data_type_11_getvalue((Data_Type_11*)data);
             
-        case DATA_TYPE_14:
-            return data_type_14_getvalue((Data_Type_14*)data);
+//         case DATA_TYPE_14:
+//             return data_type_14_getvalue((Data_Type_14*)data);
             
-        case DATA_TYPE_23:
-            return data_type_23_getvalue((Data_Type_23*)data);
+//         case DATA_TYPE_23:
+//             return data_type_23_getvalue((Data_Type_23*)data);
             
-        case DATA_TYPE_25:
-            return data_type_25_getvalue((Data_Type_25*)data);
+//         case DATA_TYPE_25:
+//             return data_type_25_getvalue((Data_Type_25*)data);
             
-        // 430集中器特殊数据类型
-        case DATA_TYPE_F12_DI: {
-            Data_F12_DI *di = (Data_F12_DI*)data;
-            if (di->status != 0xEE) {
-                return (float)di->status;
-            }
-            return 0.0f;
-        }
+//         // 430集中器特殊数据类型
+//         case DATA_TYPE_F12_DI: {
+//             Data_F12_DI *di = (Data_F12_DI*)data;
+//             if (di->status != 0xEE) {
+//                 return (float)di->status;
+//             }
+//             return 0.0f;
+//         }
             
-        case DATA_TYPE_F12_AI: {
-            Data_F12_AI *ai = (Data_F12_AI*)data;
-            if (ai->value != 0xEEEEEEEE) {
-                return ai->value;
-            }
-            return 0.0f;
-        }
+//         case DATA_TYPE_F12_AI: {
+//             Data_F12_AI *ai = (Data_F12_AI*)data;
+//             if (ai->value != 0xEEEEEEEE) {
+//                 return ai->value;
+//             }
+//             return 0.0f;
+//         }
             
-        case DATA_TYPE_F12_CI: {
-            Data_F12_CI *ci = (Data_F12_CI*)data;
-            if (ci->count != 0xEEEEEEEE) {
-                return (float)ci->count;
-            }
-            return 0.0f;
-        }
+//         case DATA_TYPE_F12_CI: {
+//             Data_F12_CI *ci = (Data_F12_CI*)data;
+//             if (ci->count != 0xEEEEEEEE) {
+//                 return (float)ci->count;
+//             }
+//             return 0.0f;
+//         }
             
-        default:
-            log_error_internal("不支持的数据类型从浮点数转换: %d", data_type);
-            return 0.0f;
-    }
-}
+//         default:
+//             log_error_internal("不支持的数据类型从浮点数转换: %d", data_type);
+//             return 0.0f;
+//     }
+// }
 
 /**
  * @brief 获取Data_Type_12的值

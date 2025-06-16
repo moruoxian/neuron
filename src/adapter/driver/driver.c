@@ -109,6 +109,9 @@ static void update_with_trace(neu_adapter_t *adapter, const char *group,
                               void *trace_ctx);
 static void update(neu_adapter_t *adapter, const char *group, const char *tag,
                    neu_dvalue_t value);
+static void update_historical(neu_adapter_t *adapter, const char *group,
+                             const char *tag, neu_dvalue_t value,
+                             uint64_t timestamp);
 static void update_im(neu_adapter_t *adapter, const char *group,
                       const char *tag, neu_dvalue_t value,
                       neu_tag_meta_t *metas, int n_meta);
@@ -501,6 +504,13 @@ static void update(neu_adapter_t *adapter, const char *group, const char *tag,
 {
     update_with_meta(adapter, group, tag, value, NULL, 0);
 }
+static void update_historical(neu_adapter_t *adapter, const char *group,
+                             const char *tag, neu_dvalue_t value,
+                             uint64_t timestamp)
+{
+    printf("update_historical: group: %s, tag: %s, value: %f, timestamp: %ld\n", group, tag, value.value.d64, timestamp);
+    update_with_meta(adapter, group, tag, value, NULL, 0);
+}
 
 static void scan_tags_response(neu_adapter_t *adapter, void *r,
                                neu_resp_scan_tags_t *resp_scan)
@@ -544,6 +554,7 @@ neu_adapter_driver_t *neu_adapter_driver_create()
     driver->adapter.cb_funs.driver.update_im           = update_im;
     driver->adapter.cb_funs.driver.update_with_trace   = update_with_trace;
     driver->adapter.cb_funs.driver.update_with_meta    = update_with_meta;
+    driver->adapter.cb_funs.driver.update_historical   = update_historical;
     driver->adapter.cb_funs.driver.scan_tags_response  = scan_tags_response;
     driver->adapter.cb_funs.driver.test_read_tag_response =
         test_read_tag_response;

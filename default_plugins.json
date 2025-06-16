@@ -8,6 +8,7 @@
 		"libplugin-modbus-rtu.so",
 		"libplugin-file.so",
 		"libplugin-opcua.so",
-		"libplugin-12241-tcp.so"
+		"libplugin-12241-tcp.so",
+		"libplugin-dmp-mqtt.so"
 	]
 }
