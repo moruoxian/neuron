@@ -44,7 +44,6 @@
 #include "plugin.h"
 #include "storage.h"
 
-// 添加函数声明
 void adapter_msg_q_exit(adapter_msg_q_t *q);
 
 static void *adapter_consumer(void *arg);
@@ -1702,12 +1701,12 @@ void neu_adapter_destroy(neu_adapter_t *adapter)
     close(adapter->control_fd);
     close(adapter->trans_data_fd);
 
-    // 先设置消息队列退出标志，让线程自然退出
+    // First set the message queue exit flag to let threads exit naturally
     if (adapter->msg_q != NULL) {
         adapter_msg_q_exit(adapter->msg_q);
     }
 
-    // 等待消费者线程退出
+    // Wait for the consumer thread to exit
     if (adapter->consumer_tid != 0) {
         pthread_join(adapter->consumer_tid, NULL);
     }
