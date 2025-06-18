@@ -45,7 +45,7 @@ static int mqtt_schema_parse(json_t *root, mqtt_schema_vt_t **vts,
             } else if (strcmp(str_val, "${tag_errors}") == 0) {
                 vt->vt = MQTT_SCHEMA_TAG_ERRORS;
             } else if (strcmp(str_val, "${dmp_values}") == 0) {
-                vt->vt = MQTT_SCHEMA_DMP_VALUES; 
+                vt->vt = MQTT_SCHEMA_DMP_VALUES;
             } else {
                 if (str_val[0] == '$' && str_val[1] == '{' &&
                     str_val[strlen(str_val) - 1] == '}') {
@@ -199,61 +199,66 @@ static void *schema_encode(char *driver, char *group,
                 neu_json_elem_t tag_elems[1 + NEU_TAG_META_SIZE] = { 0 };
 
                 if (p_tag->error == 0) {
-                    void *value_object = neu_json_encode_new();
-                    neu_json_elem_t value_elem = { 0 };
-                    value_elem.name = "value";
-                    value_elem.t = NEU_JSON_STR;
+                    void *          value_object = neu_json_encode_new();
+                    neu_json_elem_t value_elem   = { 0 };
+                    value_elem.name              = "value";
+                    value_elem.t                 = NEU_JSON_STR;
 
                     char *value_str = NULL;
                     switch (p_tag->t) {
-                        case NEU_JSON_INT:
-                            value_str = malloc(32);
-                            if (value_str != NULL) {
-                                snprintf(value_str, 32, "%ld", (long)p_tag->value.val_int);
-                            }
-                            break;
-                        case NEU_JSON_DOUBLE:
-                            value_str = malloc(64);
-                            if (value_str != NULL) {
-                                snprintf(value_str, 64, "%lf", p_tag->value.val_double);
-                            }
-                            break;
-                        case NEU_JSON_FLOAT:
-                            value_str = malloc(64);
-                            if (value_str != NULL) {
-                                snprintf(value_str, 64, "%f", p_tag->value.val_float);
-                            }
-                            break;
-                        case NEU_JSON_BOOL:
-                            value_str = malloc(6);
-                            if (value_str != NULL) {
-                                snprintf(value_str, 6, "%s", p_tag->value.val_bool ? "true" : "false");
-                            }
-                            break;
-                        case NEU_JSON_STR:
-                            value_str = strdup(p_tag->value.val_str);
-                            break;
-                        default:
-                            value_str = strdup("unknown");
-                            break;
+                    case NEU_JSON_INT:
+                        value_str = malloc(32);
+                        if (value_str != NULL) {
+                            snprintf(value_str, 32, "%ld",
+                                     (long) p_tag->value.val_int);
+                        }
+                        break;
+                    case NEU_JSON_DOUBLE:
+                        value_str = malloc(64);
+                        if (value_str != NULL) {
+                            snprintf(value_str, 64, "%lf",
+                                     p_tag->value.val_double);
+                        }
+                        break;
+                    case NEU_JSON_FLOAT:
+                        value_str = malloc(64);
+                        if (value_str != NULL) {
+                            snprintf(value_str, 64, "%f",
+                                     p_tag->value.val_float);
+                        }
+                        break;
+                    case NEU_JSON_BOOL:
+                        value_str = malloc(6);
+                        if (value_str != NULL) {
+                            snprintf(value_str, 6, "%s",
+                                     p_tag->value.val_bool ? "true" : "false");
+                        }
+                        break;
+                    case NEU_JSON_STR:
+                        value_str = strdup(p_tag->value.val_str);
+                        break;
+                    default:
+                        value_str = strdup("unknown");
+                        break;
                     }
                     value_elem.v.val_str = value_str;
                     neu_json_encode_field(value_object, &value_elem, 1);
                     free(value_str);
-                    tag_elems[0].name = p_tag->name;
-                    tag_elems[0].t = NEU_JSON_OBJECT;
+                    tag_elems[0].name         = p_tag->name;
+                    tag_elems[0].t            = NEU_JSON_OBJECT;
                     tag_elems[0].v.val_object = value_object;
 
                     for (int k = 0; k < p_tag->n_meta; k++) {
                         tag_elems[1 + k].name = p_tag->metas[k].name;
-                        tag_elems[1 + k].t = p_tag->metas[k].t;
-                        tag_elems[1 + k].v = p_tag->metas[k].value;
+                        tag_elems[1 + k].t    = p_tag->metas[k].t;
+                        tag_elems[1 + k].v    = p_tag->metas[k].value;
                     }
-                    neu_json_encode_field(values_array, tag_elems, 1 + p_tag->n_meta);
+                    neu_json_encode_field(values_array, tag_elems,
+                                          1 + p_tag->n_meta);
                 }
                 p_tag++;
             }
-            elem.t = NEU_JSON_OBJECT;
+            elem.t            = NEU_JSON_OBJECT;
             elem.v.val_object = values_array;
             break;
         }
