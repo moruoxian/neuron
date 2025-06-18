@@ -110,8 +110,8 @@ static void update_with_trace(neu_adapter_t *adapter, const char *group,
 static void update(neu_adapter_t *adapter, const char *group, const char *tag,
                    neu_dvalue_t value);
 static void update_historical(neu_adapter_t *adapter, const char *group,
-                             const char *tag, neu_dvalue_t value,
-                             uint64_t timestamp);
+                              const char *tag, neu_dvalue_t value,
+                              uint64_t timestamp);
 static void update_im(neu_adapter_t *adapter, const char *group,
                       const char *tag, neu_dvalue_t value,
                       neu_tag_meta_t *metas, int n_meta);
@@ -505,10 +505,11 @@ static void update(neu_adapter_t *adapter, const char *group, const char *tag,
     update_with_meta(adapter, group, tag, value, NULL, 0);
 }
 static void update_historical(neu_adapter_t *adapter, const char *group,
-                             const char *tag, neu_dvalue_t value,
-                             uint64_t timestamp)
+                              const char *tag, neu_dvalue_t value,
+                              uint64_t timestamp)
 {
-    printf("update_historical: group: %s, tag: %s, value: %f, timestamp: %ld\n", group, tag, value.value.d64, timestamp);
+    printf("update_historical: group: %s, tag: %s, value: %f, timestamp: %ld\n",
+           group, tag, value.value.d64, timestamp);
     update_with_meta(adapter, group, tag, value, NULL, 0);
 }
 

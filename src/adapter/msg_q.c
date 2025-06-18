@@ -36,7 +36,7 @@ struct adapter_msg_q {
 
     pthread_mutex_t mtx;
     pthread_cond_t  cond;
-    volatile bool exit_flag;
+    volatile bool   exit_flag;
 };
 
 void adapter_msg_q_exit(adapter_msg_q_t *q);

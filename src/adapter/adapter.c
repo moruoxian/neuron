@@ -118,8 +118,8 @@ static void *adapter_consumer(void *arg)
     neu_adapter_t *adapter = (neu_adapter_t *) arg;
 
     while (1) {
-        neu_msg_t *         msg    = NULL;
-        uint32_t            n      = adapter_msg_q_pop(adapter->msg_q, &msg);
+        neu_msg_t *msg = NULL;
+        uint32_t   n   = adapter_msg_q_pop(adapter->msg_q, &msg);
         if (msg == NULL) {
             // safe quit
             break;
