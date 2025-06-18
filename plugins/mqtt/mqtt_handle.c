@@ -1484,7 +1484,7 @@ int handle_trans_data(neu_plugin_t *            plugin,
                 plugin, trans_data, plugin->config.format,
                 plugin->config.schema_vts, plugin->config.n_schema_vt,
                 static_tags, n_satic_tag, &skip_none);
-            if(json_str != NULL){
+            if (json_str != NULL) {
                 size = strlen(json_str);
             }
         }
