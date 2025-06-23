@@ -231,7 +231,7 @@ static void *schema_encode(char *driver, char *group,
                         value_str = malloc(6);
                         if (value_str != NULL) {
                             snprintf(value_str, 6, "%s",
-                                     p_tag->value.val_bool ? "true" : "false");
+                                     p_tag->value.val_bool ? "1" : "0");
                         }
                         break;
                     case NEU_JSON_STR:
