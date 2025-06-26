@@ -288,6 +288,20 @@ int neu_manager_send_subscribe(neu_manager_t *manager, const char *app,
     strcpy(cmd.group, group);
     cmd.port = app_port;
 
+    // 通过node_manager获取应用的模块名称来判断是否支持历史数据
+    neu_adapter_t *app_adapter =
+        neu_node_manager_find(manager->node_manager, app);
+    if (app_adapter && app_adapter->module &&
+        strcmp(app_adapter->module->module_name, "DMP MQTT") == 0) {
+        cmd.flags = NEU_SUBSCRIBE_FLAG_ALL;
+        nlog_debug("App %s (module: %s) supports historical data", app,
+                   app_adapter->module->module_name);
+    } else {
+        cmd.flags = NEU_SUBSCRIBE_FLAG_REALTIME;
+        nlog_debug("App %s (module: %s) only supports realtime data", app,
+                   app_adapter ? app_adapter->module->module_name : "unknown");
+    }
+
     if (params && NULL == (cmd.params = strdup(params))) {
         return NEU_ERR_EINTERNAL;
     }

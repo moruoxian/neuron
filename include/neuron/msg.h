@@ -35,6 +35,10 @@ extern "C" {
 #include "type.h"
 #include <math.h>
 
+// 数据类型标志定义
+#define NEU_DATA_FLAG_REALTIME 0x01   // 实时数据（默认）
+#define NEU_DATA_FLAG_HISTORICAL 0x02 // 历史数据
+
 typedef struct {
     neu_node_running_state_e running;
     neu_node_link_state_e    link;
@@ -652,7 +656,15 @@ typedef struct {
     uint16_t port;
     char *   params;
     char *   static_tags;
+    uint32_t flags; // Subscribe flags for feature support
 } neu_req_subscribe_t;
+
+// Subscribe flags definition
+#define NEU_SUBSCRIBE_FLAG_HISTORICAL 0x01 // Support historical data
+#define NEU_SUBSCRIBE_FLAG_REALTIME 0x02   // Support realtime data
+#define NEU_SUBSCRIBE_FLAG_ALL       \
+    (NEU_SUBSCRIBE_FLAG_HISTORICAL | \
+     NEU_SUBSCRIBE_FLAG_REALTIME) // Support all data
 
 typedef struct {
     char app[NEU_NODE_NAME_LEN];
@@ -874,13 +886,15 @@ static inline void neu_req_write_tag_fini(neu_req_write_tag_t *req)
 typedef struct neu_resp_tag_value {
     char         tag[NEU_TAG_NAME_LEN];
     neu_dvalue_t value;
+    uint64_t     historical_timestamp; // 新增：历史时间戳
+    uint32_t     data_flags;           // 新增：数据类型标志
 } neu_resp_tag_value_t;
-
-typedef neu_resp_tag_value_t neu_tag_value_t;
 
 typedef struct neu_resp_tag_value_meta {
     char           tag[NEU_TAG_NAME_LEN];
     neu_dvalue_t   value;
+    uint64_t       historical_timestamp; // 新增：历史时间戳
+    uint32_t       data_flags;           // 新增：数据类型标志
     neu_tag_meta_t metas[NEU_TAG_META_SIZE];
     neu_datatag_t  datatag;
 } neu_resp_tag_value_meta_t;
@@ -955,6 +969,8 @@ typedef struct {
 typedef struct neu_resp_tag_value_meta_paginate {
     char           tag[NEU_TAG_NAME_LEN];
     neu_dvalue_t   value;
+    uint64_t       historical_timestamp; // 新增：历史时间戳
+    uint32_t       data_flags;           // 新增：数据类型标志
     neu_tag_meta_t metas[NEU_TAG_META_SIZE];
     neu_datatag_t  datatag;
 } neu_resp_tag_value_meta_paginate_t;

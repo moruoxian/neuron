@@ -76,6 +76,51 @@ static int tag_values_to_json(UT_array *tags, mqtt_static_vt_t *s_tags,
 
     return 0;
 }
+static inline void
+neu_tag_value_to_json_historical(neu_resp_tag_value_meta_t *tag_value,
+                                 neu_json_read_resp_tag_t * tag_json);
+// 历史数据专用的JSON生成函数
+static char *generate_historical_upload_json(
+    neu_plugin_t *plugin, neu_reqresp_trans_data_t *data,
+    mqtt_upload_format_e format, mqtt_schema_vt_t *vts, size_t n_vts,
+    mqtt_static_vt_t *s_tags, size_t n_s_tags, bool *skip);
+
+static int tag_values_to_json_historical(UT_array *            tags,
+                                         mqtt_static_vt_t *    s_tags,
+                                         size_t                n_s_tags,
+                                         neu_json_read_resp_t *json)
+{
+    int index = 0;
+
+    if (0 == utarray_len(tags)) {
+        return 0;
+    }
+
+    json->n_tag = utarray_len(tags) + n_s_tags;
+    json->tags  = (neu_json_read_resp_tag_t *) calloc(
+        json->n_tag, sizeof(neu_json_read_resp_tag_t));
+    if (NULL == json->tags) {
+        return -1;
+    }
+
+    utarray_foreach(tags, neu_resp_tag_value_meta_t *, tag_value)
+    {
+        neu_tag_value_to_json_historical(tag_value, &json->tags[index]);
+        index += 1;
+    }
+
+    if (s_tags != NULL) {
+        for (size_t i = 0; i < n_s_tags; i++) {
+            neu_json_read_resp_tag_t *tag = &json->tags[index];
+            tag->name                     = s_tags[i].name;
+            tag->t                        = s_tags[i].jtype;
+            tag->value                    = s_tags[i].jvalue;
+            index += 1;
+        }
+    }
+
+    return 0;
+}
 
 void filter_error_tags(neu_reqresp_trans_data_t *data)
 {
@@ -1293,6 +1338,16 @@ int handle_trans_data(neu_plugin_t *            plugin,
                                  &n_satic_tag);
         }
 
+        // Check if this is historical data by examining the data flags
+        // 检查数据标志而不是订阅者能力
+        bool is_historical_data = false;
+        if (utarray_len(trans_data->tags) > 0) {
+            neu_resp_tag_value_meta_t *first_tag =
+                (neu_resp_tag_value_meta_t *) utarray_front(trans_data->tags);
+            is_historical_data =
+                (first_tag->data_flags & NEU_DATA_FLAG_HISTORICAL) != 0;
+        }
+
         if (plugin->config.format == MQTT_UPLOAD_FORMAT_PROTOBUF) {
             Model__DataReport data_report = MODEL__DATA_REPORT__INIT;
 
@@ -1480,10 +1535,21 @@ int handle_trans_data(neu_plugin_t *            plugin,
             }
             free(data_report.tags);
         } else {
-            json_str = generate_upload_json(
-                plugin, trans_data, plugin->config.format,
-                plugin->config.schema_vts, plugin->config.n_schema_vt,
-                static_tags, n_satic_tag, &skip_none);
+            // Generate JSON for historical or realtime data
+            if (is_historical_data) {
+                // For historical data, use a different JSON generation method
+                json_str = generate_historical_upload_json(
+                    plugin, trans_data, plugin->config.format,
+                    plugin->config.schema_vts, plugin->config.n_schema_vt,
+                    static_tags, n_satic_tag, &skip_none);
+            } else {
+                // For realtime data, use existing method
+                json_str = generate_upload_json(
+                    plugin, trans_data, plugin->config.format,
+                    plugin->config.schema_vts, plugin->config.n_schema_vt,
+                    static_tags, n_satic_tag, &skip_none);
+            }
+
             if (json_str != NULL) {
                 size = strlen(json_str);
             }
@@ -1504,11 +1570,32 @@ int handle_trans_data(neu_plugin_t *            plugin,
         char *         topic = route->topic;
         neu_mqtt_qos_e qos   = plugin->config.qos;
 
+        // Generate historical topic only if this is actually historical data
+        // AND the subscriber supports historical data
+        if (is_historical_data && route->support_historical) {
+            // Generate historical topic by replacing "property" with
+            // "hisproperty"
+            char *historical_topic = make_historical_topic(route->topic);
+            if (historical_topic) {
+                topic = historical_topic;
+                plog_debug(
+                    plugin,
+                    "Publishing historical data to topic: %s (original: %s)",
+                    historical_topic, route->topic);
+            }
+        }
+
         if (plugin->config.version == NEU_MQTT_VERSION_V5 && trans_trace) {
             rv = publish_with_trace(plugin, qos, topic, json_str, size,
                                     trace_parent);
         } else {
             rv = publish(plugin, qos, topic, json_str, size);
+        }
+
+        // Free historical topic if it was allocated
+        if (is_historical_data && route->support_historical &&
+            topic != route->topic) {
+            free((char *) topic);
         }
 
         json_str = NULL;
@@ -1537,9 +1624,12 @@ static inline char *default_upload_topic(neu_req_subscribe_t *info)
 
 int handle_subscribe_group(neu_plugin_t *plugin, neu_req_subscribe_t *sub_info)
 {
-    int rv = 0;
+    // 兜底，强制实时+历史，仅dmp_mqtt插件支持
+    sub_info->flags = NEU_SUBSCRIBE_FLAG_ALL;
+    int rv          = 0;
 
     neu_json_elem_t topic = { .name = "topic", .t = NEU_JSON_STR };
+
     if (NULL == sub_info->params) {
         // no parameters, try default topic
         topic.v.val_str = default_upload_topic(sub_info);
@@ -1548,32 +1638,31 @@ int handle_subscribe_group(neu_plugin_t *plugin, neu_req_subscribe_t *sub_info)
             goto end;
         }
     } else if (0 != neu_parse_param(sub_info->params, NULL, 1, &topic)) {
-        plog_error(plugin, "parse `%s` for topic fail", sub_info->params);
-        rv = NEU_ERR_GROUP_PARAMETER_INVALID;
+        plog_error(plugin, "parse topic param failed");
+        rv = NEU_ERR_EINTERNAL;
         goto end;
     }
 
-    rv =
-        route_tbl_add_new(&plugin->route_tbl, sub_info->driver, sub_info->group,
-                          topic.v.val_str, sub_info->static_tags);
-    // topic.v.val_str ownership moved
-    if (0 != rv) {
-        plog_error(plugin, "route driver:%s group:%s fail, `%s`",
-                   sub_info->driver, sub_info->group, sub_info->params);
-        goto end;
-    }
+    // Check if this subscription supports historical data
+    bool support_historical =
+        (sub_info->flags & NEU_SUBSCRIBE_FLAG_HISTORICAL) != 0;
 
-    plog_notice(plugin, "route driver:%s group:%s to topic:%s",
-                sub_info->driver, sub_info->group, topic.v.val_str);
+    rv = route_tbl_add_new_with_flags(
+        &plugin->route_tbl, sub_info->driver, sub_info->group, topic.v.val_str,
+        sub_info->static_tags, support_historical);
 
 end:
-    free(sub_info->params);
+    if (NULL == sub_info->params && topic.v.val_str) {
+        free(topic.v.val_str);
+    }
     return rv;
 }
 
 int handle_update_subscribe(neu_plugin_t *plugin, neu_req_subscribe_t *sub_info)
 {
-    int rv = 0;
+    // 兜底，强制实时+历史，仅dmp_mqtt插件支持
+    sub_info->flags = NEU_SUBSCRIBE_FLAG_ALL;
+    int rv          = 0;
 
     if (NULL == sub_info->params) {
         rv = NEU_ERR_GROUP_PARAMETER_INVALID;
@@ -2441,4 +2530,284 @@ int handle_driver_fdown_data_response(neu_plugin_t *        plugin,
 end:
     neu_json_decode_mqtt_req_free(mqtt_json);
     return rv;
+}
+
+// 历史数据专用的JSON生成函数
+static char *generate_historical_upload_json(
+    neu_plugin_t *plugin, neu_reqresp_trans_data_t *data,
+    mqtt_upload_format_e format, mqtt_schema_vt_t *vts, size_t n_vts,
+    mqtt_static_vt_t *s_tags, size_t n_s_tags, bool *skip)
+{
+    char *                   json_str = NULL;
+    neu_json_read_periodic_t header   = { .group     = (char *) data->group,
+                                        .node      = (char *) data->driver,
+                                        .timestamp = global_timestamp };
+    neu_json_read_resp_t     json     = { 0 };
+
+    if (!plugin->config.upload_err && skip != NULL) {
+        filter_error_tags(data);
+
+        if (utarray_len(data->tags) == 0) {
+            *skip = true;
+            return NULL;
+        }
+    }
+
+    if (format == MQTT_UPLOAD_FORMAT_CUSTOM) {
+        if (0 != tag_values_to_json_historical(data->tags, NULL, 0, &json)) {
+            plog_error(plugin, "tag_values_to_json_historical fail");
+            return NULL;
+        }
+    } else {
+        if (0 !=
+            tag_values_to_json_historical(data->tags, s_tags, n_s_tags,
+                                          &json)) {
+            plog_error(plugin, "tag_values_to_json_historical fail");
+            return NULL;
+        }
+    }
+
+    int ret;
+
+    switch (format) {
+    case MQTT_UPLOAD_FORMAT_VALUES:
+        neu_json_encode_with_mqtt(&json, neu_json_encode_read_resp1, &header,
+                                  neu_json_encode_read_periodic_resp,
+                                  &json_str);
+        break;
+    case MQTT_UPLOAD_FORMAT_TAGS:
+        neu_json_encode_with_mqtt(&json, neu_json_encode_read_resp2, &header,
+                                  neu_json_encode_read_periodic_resp,
+                                  &json_str);
+        break;
+    case MQTT_UPLOAD_FORMAT_ECP:
+        ret = neu_json_encode_with_mqtt_ecp(
+            &json, neu_json_encode_read_resp_ecp, &header,
+            neu_json_encode_read_periodic_resp, &json_str);
+        if (ret == -2) {
+            *skip = true;
+            plog_warn(plugin, "driver:%s group:%s, no valid tags", data->driver,
+                      data->group);
+        }
+        break;
+    case MQTT_UPLOAD_FORMAT_CUSTOM: {
+        ret = mqtt_schema_encode(data->driver, data->group, &json, vts, n_vts,
+                                 s_tags, n_s_tags, &json_str);
+        break;
+    }
+    case MQTT_UPLOAD_FORMAT_PROTOBUF:
+        break;
+    default:
+        plog_warn(plugin, "invalid upload format: %d", format);
+        break;
+    }
+
+    for (int i = 0; i < json.n_tag; i++) {
+        if (json.tags[i].n_meta > 0) {
+            free(json.tags[i].metas);
+        }
+    }
+
+    if (json.tags) {
+        free(json.tags);
+    }
+    return json_str;
+}
+
+// 历史数据专用的标签值转JSON函数，完全按照原始neu_tag_value_to_json实现
+static inline void
+neu_tag_value_to_json_historical(neu_resp_tag_value_meta_t *tag_value,
+                                 neu_json_read_resp_tag_t * tag_json)
+{
+    tag_json->name  = tag_value->tag;
+    tag_json->error = 0;
+
+    for (int k = 0; k < NEU_TAG_META_SIZE; k++) {
+        if (strlen(tag_value->metas[k].name) > 0) {
+            tag_json->n_meta++;
+        } else {
+            break;
+        }
+    }
+    if (tag_json->n_meta > 0) {
+        tag_json->metas = (neu_json_tag_meta_t *) calloc(
+            tag_json->n_meta, sizeof(neu_json_tag_meta_t));
+    }
+    neu_json_metas_to_json(tag_value->metas, NEU_TAG_META_SIZE, tag_json);
+
+    tag_json->datatag.bias = tag_value->datatag.bias;
+
+    switch (tag_value->value.type) {
+    case NEU_TYPE_ERROR:
+        tag_json->t             = NEU_JSON_INT;
+        tag_json->value.val_int = tag_value->value.value.i32;
+        tag_json->error         = tag_value->value.value.i32;
+        break;
+    case NEU_TYPE_UINT8:
+        tag_json->t             = NEU_JSON_INT;
+        tag_json->value.val_int = tag_value->value.value.u8;
+        break;
+    case NEU_TYPE_INT8:
+        tag_json->t             = NEU_JSON_INT;
+        tag_json->value.val_int = tag_value->value.value.i8;
+        break;
+    case NEU_TYPE_INT16:
+        tag_json->t             = NEU_JSON_INT;
+        tag_json->value.val_int = tag_value->value.value.i16;
+        break;
+    case NEU_TYPE_INT32:
+        tag_json->t             = NEU_JSON_INT;
+        tag_json->value.val_int = tag_value->value.value.i32;
+        break;
+    case NEU_TYPE_INT64:
+        tag_json->t             = NEU_JSON_INT;
+        tag_json->value.val_int = tag_value->value.value.i64;
+        break;
+    case NEU_TYPE_WORD:
+    case NEU_TYPE_UINT16:
+        tag_json->t             = NEU_JSON_INT;
+        tag_json->value.val_int = tag_value->value.value.u16;
+        break;
+    case NEU_TYPE_DWORD:
+    case NEU_TYPE_UINT32:
+        tag_json->t             = NEU_JSON_INT;
+        tag_json->value.val_int = tag_value->value.value.u32;
+        break;
+    case NEU_TYPE_LWORD:
+    case NEU_TYPE_UINT64:
+        tag_json->t             = NEU_JSON_INT;
+        tag_json->value.val_int = tag_value->value.value.u64;
+        break;
+    case NEU_TYPE_FLOAT:
+        if (isnan(tag_value->value.value.f32)) {
+            tag_json->t               = NEU_JSON_FLOAT;
+            tag_json->value.val_float = tag_value->value.value.f32;
+            tag_json->error           = NEU_ERR_PLUGIN_TAG_VALUE_EXPIRED;
+        } else {
+            tag_json->t               = NEU_JSON_FLOAT;
+            tag_json->value.val_float = tag_value->value.value.f32;
+            tag_json->precision       = tag_value->value.precision;
+        }
+        break;
+    case NEU_TYPE_DOUBLE:
+        if (isnan(tag_value->value.value.d64)) {
+            tag_json->t                = NEU_JSON_DOUBLE;
+            tag_json->value.val_double = tag_value->value.value.d64;
+            tag_json->error            = NEU_ERR_PLUGIN_TAG_VALUE_EXPIRED;
+        } else {
+            tag_json->t                = NEU_JSON_DOUBLE;
+            tag_json->value.val_double = tag_value->value.value.d64;
+            tag_json->precision        = tag_value->value.precision;
+        }
+        break;
+    case NEU_TYPE_BOOL:
+        tag_json->t              = NEU_JSON_BOOL;
+        tag_json->value.val_bool = tag_value->value.value.boolean;
+        break;
+    case NEU_TYPE_BIT:
+        tag_json->t             = NEU_JSON_BIT;
+        tag_json->value.val_bit = tag_value->value.value.u8;
+        break;
+    case NEU_TYPE_STRING:
+    case NEU_TYPE_TIME:
+    case NEU_TYPE_DATA_AND_TIME:
+    case NEU_TYPE_ARRAY_CHAR:
+        tag_json->t             = NEU_JSON_STR;
+        tag_json->value.val_str = tag_value->value.value.str;
+        break;
+    case NEU_TYPE_PTR:
+        tag_json->t             = NEU_JSON_STR;
+        tag_json->value.val_str = (char *) tag_value->value.value.ptr.ptr;
+        break;
+    case NEU_TYPE_BYTES:
+        tag_json->t = NEU_JSON_ARRAY_UINT8;
+        tag_json->value.val_array_uint8.length =
+            tag_value->value.value.bytes.length;
+        tag_json->value.val_array_uint8.u8s =
+            tag_value->value.value.bytes.bytes;
+        break;
+    case NEU_TYPE_ARRAY_BOOL:
+        tag_json->t = NEU_JSON_ARRAY_BOOL;
+        tag_json->value.val_array_bool.length =
+            tag_value->value.value.bools.length;
+        tag_json->value.val_array_bool.bools =
+            tag_value->value.value.bools.bools;
+        break;
+    case NEU_TYPE_ARRAY_INT8:
+        tag_json->t = NEU_JSON_ARRAY_INT8;
+        tag_json->value.val_array_int8.length =
+            tag_value->value.value.i8s.length;
+        tag_json->value.val_array_int8.i8s = tag_value->value.value.i8s.i8s;
+        break;
+    case NEU_TYPE_ARRAY_UINT8:
+        tag_json->t = NEU_JSON_ARRAY_UINT8;
+        tag_json->value.val_array_uint8.length =
+            tag_value->value.value.u8s.length;
+        tag_json->value.val_array_uint8.u8s = tag_value->value.value.u8s.u8s;
+        break;
+    case NEU_TYPE_ARRAY_INT16:
+        tag_json->t = NEU_JSON_ARRAY_INT16;
+        tag_json->value.val_array_int16.length =
+            tag_value->value.value.i16s.length;
+        tag_json->value.val_array_int16.i16s = tag_value->value.value.i16s.i16s;
+        break;
+    case NEU_TYPE_ARRAY_UINT16:
+        tag_json->t = NEU_JSON_ARRAY_UINT16;
+        tag_json->value.val_array_uint16.length =
+            tag_value->value.value.u16s.length;
+        tag_json->value.val_array_uint16.u16s =
+            tag_value->value.value.u16s.u16s;
+        break;
+    case NEU_TYPE_ARRAY_INT32:
+        tag_json->t = NEU_JSON_ARRAY_INT32;
+        tag_json->value.val_array_int32.length =
+            tag_value->value.value.i32s.length;
+        tag_json->value.val_array_int32.i32s = tag_value->value.value.i32s.i32s;
+        break;
+    case NEU_TYPE_ARRAY_UINT32:
+        tag_json->t = NEU_JSON_ARRAY_UINT32;
+        tag_json->value.val_array_uint32.length =
+            tag_value->value.value.u32s.length;
+        tag_json->value.val_array_uint32.u32s =
+            tag_value->value.value.u32s.u32s;
+        break;
+    case NEU_TYPE_ARRAY_INT64:
+        tag_json->t = NEU_JSON_ARRAY_INT64;
+        tag_json->value.val_array_int64.length =
+            tag_value->value.value.i64s.length;
+        tag_json->value.val_array_int64.i64s = tag_value->value.value.i64s.i64s;
+        break;
+    case NEU_TYPE_ARRAY_UINT64:
+        tag_json->t = NEU_JSON_ARRAY_UINT64;
+        tag_json->value.val_array_uint64.length =
+            tag_value->value.value.u64s.length;
+        tag_json->value.val_array_uint64.u64s =
+            tag_value->value.value.u64s.u64s;
+        break;
+    case NEU_TYPE_ARRAY_FLOAT:
+        tag_json->t = NEU_JSON_ARRAY_FLOAT;
+        tag_json->value.val_array_float.length =
+            tag_value->value.value.f32s.length;
+        tag_json->value.val_array_float.f32s = tag_value->value.value.f32s.f32s;
+        break;
+    case NEU_TYPE_ARRAY_DOUBLE:
+        tag_json->t = NEU_JSON_ARRAY_DOUBLE;
+        tag_json->value.val_array_double.length =
+            tag_value->value.value.f64s.length;
+        tag_json->value.val_array_double.f64s =
+            tag_value->value.value.f64s.f64s;
+        break;
+    case NEU_TYPE_ARRAY_STRING:
+        tag_json->t = NEU_JSON_ARRAY_STR;
+        tag_json->value.val_array_str.length =
+            tag_value->value.value.strs.length;
+        tag_json->value.val_array_str.p_strs = tag_value->value.value.strs.strs;
+        break;
+    case NEU_TYPE_CUSTOM:
+        tag_json->t                = NEU_JSON_OBJECT;
+        tag_json->value.val_object = tag_value->value.value.json;
+        break;
+    default:
+        break;
+    }
 }
