@@ -40,6 +40,9 @@ typedef struct {
     char *topic;
     char *static_tags;
 
+    // Historical data support
+    bool support_historical; // Whether this route supports historical data
+
     UT_hash_handle hh;
 } route_entry_t;
 
@@ -192,6 +195,62 @@ static inline void route_tbl_del(route_entry_t **tbl, const char *driver,
         HASH_DEL(*tbl, find);
         route_entry_free(find);
     }
+}
+
+// Helper function to generate historical topic by replacing "property" with
+// "hisproperty"
+static inline char *make_historical_topic(const char *topic)
+{
+    const char *needle  = "property";
+    const char *replace = "hisproperty";
+    const char *pos     = strstr(topic, needle);
+
+    if (!pos) {
+        // If "property" not found, append "_historical" to the original topic
+        size_t len    = strlen(topic) + strlen("_historical") + 1;
+        char * result = malloc(len);
+        snprintf(result, len, "%s_historical", topic);
+        return result;
+    }
+
+    // Replace "property" with "hisproperty"
+    size_t prefix_len = pos - topic;
+    size_t new_len =
+        prefix_len + strlen(replace) + strlen(pos + strlen(needle)) + 1;
+    char *result = malloc(new_len);
+    snprintf(result, new_len, "%.*s%s%s", (int) prefix_len, topic, replace,
+             pos + strlen(needle));
+    return result;
+}
+
+// Add new route entry with historical data support flag
+static inline int route_tbl_add_new_with_flags(route_entry_t **tbl,
+                                               const char *    driver,
+                                               const char *group, char *topic,
+                                               char *static_tags,
+                                               bool  support_historical)
+{
+    route_entry_t *find = route_tbl_get(tbl, driver, group);
+    if (find) {
+        route_entry_free(find);
+        HASH_DEL(*tbl, find);
+    }
+
+    route_entry_t *entry = calloc(1, sizeof(route_entry_t));
+    if (NULL == entry) {
+        return -1;
+    }
+
+    strncpy(entry->key.driver, driver, sizeof(entry->key.driver) - 1);
+    entry->key.driver[sizeof(entry->key.driver) - 1] = '\0';
+    strncpy(entry->key.group, group, sizeof(entry->key.group) - 1);
+    entry->key.group[sizeof(entry->key.group) - 1] = '\0';
+    entry->topic                                   = topic;
+    entry->static_tags                             = static_tags;
+    entry->support_historical                      = support_historical;
+
+    HASH_ADD(hh, *tbl, key, sizeof(route_key_t), entry);
+    return 0;
 }
 
 #ifdef __cplusplus

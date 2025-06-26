@@ -53,6 +53,7 @@ typedef struct to_be_write_tag {
 typedef struct {
     char               app[NEU_NODE_NAME_LEN];
     struct sockaddr_un addr;
+    uint32_t           flags; // Subscription flags for feature support
 } sub_app_t;
 
 typedef struct group {
@@ -508,9 +509,162 @@ static void update_historical(neu_adapter_t *adapter, const char *group,
                               const char *tag, neu_dvalue_t value,
                               uint64_t timestamp)
 {
-    printf("update_historical: group: %s, tag: %s, value: %f, timestamp: %ld\n",
-           group, tag, value.value.d64, timestamp);
-    update_with_meta(adapter, group, tag, value, NULL, 0);
+    neu_adapter_driver_t *driver = (neu_adapter_driver_t *) adapter;
+
+    // Find the group using the existing find_group function
+    group_t *pgroup = find_group(driver, group);
+    if (!pgroup) {
+        nlog_warn("Historical data update: group %s not found", group);
+        return;
+    }
+
+    // Find the tag to get decimal and bias for engineering value conversion
+    neu_datatag_t *datatag = neu_group_find_tag(pgroup->group, tag);
+    if (!datatag) {
+        nlog_warn("Historical data update: tag %s not found in group %s", tag,
+                  group);
+        return;
+    }
+
+    // Apply engineering value conversion: value = value * decimal + bias
+    neu_dvalue_t engineering_value = value;
+
+    // Apply decimal and bias conversion if configured
+    if (datatag->decimal != 0.0 || datatag->bias != 0.0) {
+        double decimal = datatag->decimal != 0.0 ? datatag->decimal : 1.0;
+        double bias    = datatag->bias;
+
+        switch (engineering_value.type) {
+        case NEU_TYPE_INT8:
+            engineering_value.value.i64 =
+                engineering_value.value.i8 * decimal + bias;
+            engineering_value.type = NEU_TYPE_INT64;
+            break;
+        case NEU_TYPE_UINT8:
+            engineering_value.value.u64 =
+                engineering_value.value.u8 * decimal + bias;
+            engineering_value.type = NEU_TYPE_UINT64;
+            break;
+        case NEU_TYPE_INT16:
+            engineering_value.value.i64 =
+                engineering_value.value.i16 * decimal + bias;
+            engineering_value.type = NEU_TYPE_INT64;
+            break;
+        case NEU_TYPE_UINT16:
+            engineering_value.value.u64 =
+                engineering_value.value.u16 * decimal + bias;
+            engineering_value.type = NEU_TYPE_UINT64;
+            break;
+        case NEU_TYPE_INT32:
+            engineering_value.value.i64 =
+                engineering_value.value.i32 * decimal + bias;
+            engineering_value.type = NEU_TYPE_INT64;
+            break;
+        case NEU_TYPE_UINT32:
+            engineering_value.value.u64 =
+                engineering_value.value.u32 * decimal + bias;
+            engineering_value.type = NEU_TYPE_UINT64;
+            break;
+        case NEU_TYPE_INT64:
+            engineering_value.value.i64 =
+                engineering_value.value.i64 * decimal + bias;
+            break;
+        case NEU_TYPE_UINT64:
+            engineering_value.value.u64 =
+                engineering_value.value.u64 * decimal + bias;
+            break;
+        case NEU_TYPE_FLOAT:
+            engineering_value.value.f32 =
+                engineering_value.value.f32 * decimal + bias;
+            break;
+        case NEU_TYPE_DOUBLE:
+            engineering_value.value.d64 =
+                engineering_value.value.d64 * decimal + bias;
+            break;
+        default:
+            // Other types don't need conversion
+            break;
+        }
+    }
+
+    // Create message header
+    neu_reqresp_head_t header = { 0 };
+    header.type               = NEU_REQRESP_TRANS_DATA;
+    strcpy(header.sender, adapter->name);
+
+    // Create trans data
+    neu_reqresp_trans_data_t *data =
+        calloc(1, sizeof(neu_reqresp_trans_data_t));
+    data->driver = strdup(adapter->name);
+    data->group  = strdup(group);
+    utarray_new(data->tags, neu_resp_tag_value_meta_icd());
+
+    // Add the historical tag value with new fields
+    neu_resp_tag_value_meta_t tag_value = { 0 };
+    strcpy(tag_value.tag, tag);
+    tag_value.value                = engineering_value;
+    tag_value.historical_timestamp = timestamp; // 新增：设置历史时间戳
+    tag_value.data_flags = NEU_DATA_FLAG_HISTORICAL; // 新增：设置历史数据标志
+    // Set datatag info
+    tag_value.datatag.name = tag_value.tag;
+    tag_value.datatag.type = datatag->type;
+    tag_value.datatag.bias = datatag->bias;
+
+    utarray_push_back(data->tags, &tag_value);
+
+    // Send to subscribers that support historical data
+    pthread_mutex_lock(&pgroup->apps_mtx);
+
+    // 计算支持历史数据的订阅者数量
+    int historical_subscriber_count = 0;
+    if (utarray_len(pgroup->apps) > 0) {
+        utarray_foreach(pgroup->apps, sub_app_t *, app)
+        {
+            bool supports_historical =
+                (app->flags & NEU_SUBSCRIBE_FLAG_HISTORICAL) != 0;
+            if (supports_historical) {
+                historical_subscriber_count++;
+            }
+        }
+    }
+
+    // 如果有支持历史数据的订阅者，发送数据
+    if (historical_subscriber_count > 0) {
+        // 初始化ctx，设置正确的初始index值
+        data->ctx = calloc(1, sizeof(neu_reqresp_trans_data_ctx_t));
+        data->ctx->index =
+            historical_subscriber_count; // 设置为实际的订阅者数量
+        pthread_mutex_init(&data->ctx->mtx, NULL);
+
+        utarray_foreach(pgroup->apps, sub_app_t *, app)
+        {
+            bool supports_historical =
+                (app->flags & NEU_SUBSCRIBE_FLAG_HISTORICAL) != 0;
+
+            if (supports_historical) {
+                if (driver->adapter.cb_funs.responseto(
+                        &driver->adapter, &header, data, app->addr) != 0) {
+                    nlog_warn("Failed to send historical data to app %s",
+                              app->app);
+                    neu_trans_data_free(data);
+                } else {
+                    nlog_debug("Sent historical data for tag %s to app %s "
+                               "(timestamp=%lu)",
+                               tag, app->app, timestamp);
+                }
+            }
+        }
+    } else {
+        // 没有支持历史数据的订阅者，直接清理内存
+        utarray_free(data->tags);
+        free(data->group);
+        free(data->driver);
+    }
+
+    pthread_mutex_unlock(&pgroup->apps_mtx);
+
+    // 释放data结构体本身
+    free(data);
 }
 
 static void scan_tags_response(neu_adapter_t *adapter, void *r,
@@ -3083,6 +3237,7 @@ void neu_adapter_driver_subscribe(neu_adapter_driver_t *driver,
     sub_app.addr.sun_family = AF_UNIX;
     snprintf(sub_app.addr.sun_path, sizeof(sub_app.addr.sun_path),
              "%cneuron-%" PRIu16, '\0', req->port);
+    sub_app.flags = req->flags; // Store subscription flags
 
     utarray_push_back(find->apps, &sub_app);
     pthread_mutex_unlock(&find->apps_mtx);

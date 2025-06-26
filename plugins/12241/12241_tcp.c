@@ -123,6 +123,13 @@ static const char *get_fn_mapping_description(neu_plugin_t *plugin,
 static int         init_fn_mapping_hash(neu_plugin_t *plugin);
 static void        cleanup_fn_mapping_hash(neu_plugin_t *plugin);
 
+// 历史数据上报函数声明
+static int neu_plugin_update_history_tag(neu_plugin_t *plugin,
+                                         const char *  group_name,
+                                         const char *  tag_name,
+                                         neu_dvalue_t  value,
+                                         uint64_t      timestamp);
+
 // 组级时间戳管理函数声明
 static bool should_generate_polling_tasks(neu_plugin_t *plugin,
                                           const char *  group_name);
@@ -3419,7 +3426,7 @@ static int gb_12241_get_data_unit_size(uint16_t fn)
         return sizeof(Data_F12); // 139个DI + 4个AI*4 + 4个CI*4
 
     case 28: // F28：电表运行状态字及其变位标志
-        // 按照时间+14个状态字(每个两字节)的大小计算
+             // 按照时间+14个状态字(每个两字节)的大小计算
         return sizeof(Data_ONE_F28);
 
     case 25: // F25: 电能量
@@ -5760,6 +5767,13 @@ static int parse_and_store_historical_data(
                                     "V, FN=%u, PN=%u",
                                     phase, j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
 
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
@@ -7236,5 +7250,40 @@ static int get_interval_seconds_from_density(uint8_t density)
         return 0;
         break;
     }
+    return 0;
+}
+
+/**
+ * @brief 上报历史数据到北向插件
+ *
+ * 该函数用于将12241插件解析出的历史数据上报到北向插件（如dmp_mqtt）。
+ * 它会调用neuron框架的update_historical接口，将历史数据推送给所有
+ * 订阅了历史数据的北向插件。
+ *
+ * @param plugin 插件实例
+ * @param group_name 组名
+ * @param tag_name 标签名
+ * @param value 历史数据值
+ * @param timestamp 历史数据的时间戳
+ * @return 0成功，-1失败
+ */
+static int neu_plugin_update_history_tag(neu_plugin_t *plugin,
+                                         const char *  group_name,
+                                         const char *  tag_name,
+                                         neu_dvalue_t value, uint64_t timestamp)
+{
+    if (!plugin || !group_name || !tag_name) {
+        plog_error(plugin, "历史数据上报参数无效");
+        return -1;
+    }
+
+    // 调用adapter的update_historical接口
+    // 该接口会将历史数据推送给所有订阅了NEU_SUBSCRIBE_FLAG_HISTORICAL的北向插件
+    plugin->common.adapter_callbacks->driver.update_historical(
+        plugin->common.adapter, group_name, tag_name, value, timestamp);
+
+    plog_debug(plugin, "历史数据上报: %s.%s, 值类型=%d, 时间戳=%lu", group_name,
+               tag_name, value.type, timestamp);
+
     return 0;
 }
