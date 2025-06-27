@@ -82,8 +82,9 @@ neu_tag_value_to_json_historical(neu_resp_tag_value_meta_t *tag_value,
 // 历史数据专用的JSON生成函数
 static char *generate_historical_upload_json(
     neu_plugin_t *plugin, neu_reqresp_trans_data_t *data,
-    mqtt_upload_format_e format, mqtt_schema_vt_t *vts, size_t n_vts,
-    mqtt_static_vt_t *s_tags, size_t n_s_tags, bool *skip);
+    mqtt_upload_format_e format, mqtt_schema_vt_t *vts __attribute__((unused)),
+    size_t n_vts __attribute__((unused)), mqtt_static_vt_t *s_tags,
+    size_t n_s_tags, bool *skip);
 
 static int tag_values_to_json_historical(UT_array *            tags,
                                          mqtt_static_vt_t *    s_tags,
@@ -2535,14 +2536,12 @@ end:
 // 历史数据专用的JSON生成函数
 static char *generate_historical_upload_json(
     neu_plugin_t *plugin, neu_reqresp_trans_data_t *data,
-    mqtt_upload_format_e format, mqtt_schema_vt_t *vts, size_t n_vts,
-    mqtt_static_vt_t *s_tags, size_t n_s_tags, bool *skip)
+    mqtt_upload_format_e format, mqtt_schema_vt_t *vts __attribute__((unused)),
+    size_t n_vts __attribute__((unused)), mqtt_static_vt_t *s_tags,
+    size_t n_s_tags, bool *skip)
 {
-    char *                   json_str = NULL;
-    neu_json_read_periodic_t header   = { .group     = (char *) data->group,
-                                        .node      = (char *) data->driver,
-                                        .timestamp = global_timestamp };
-    neu_json_read_resp_t     json     = { 0 };
+    char *               json_str = NULL;
+    neu_json_read_resp_t json     = { 0 };
 
     if (!plugin->config.upload_err && skip != NULL) {
         filter_error_tags(data);
@@ -2553,52 +2552,179 @@ static char *generate_historical_upload_json(
         }
     }
 
-    if (format == MQTT_UPLOAD_FORMAT_CUSTOM) {
-        if (0 != tag_values_to_json_historical(data->tags, NULL, 0, &json)) {
-            plog_error(plugin, "tag_values_to_json_historical fail");
-            return NULL;
-        }
-    } else {
-        if (0 !=
-            tag_values_to_json_historical(data->tags, s_tags, n_s_tags,
-                                          &json)) {
-            plog_error(plugin, "tag_values_to_json_historical fail");
-            return NULL;
-        }
-    }
-
-    int ret;
-
-    switch (format) {
-    case MQTT_UPLOAD_FORMAT_VALUES:
-        neu_json_encode_with_mqtt(&json, neu_json_encode_read_resp1, &header,
-                                  neu_json_encode_read_periodic_resp,
-                                  &json_str);
-        break;
-    case MQTT_UPLOAD_FORMAT_TAGS:
-        neu_json_encode_with_mqtt(&json, neu_json_encode_read_resp2, &header,
-                                  neu_json_encode_read_periodic_resp,
-                                  &json_str);
-        break;
-    case MQTT_UPLOAD_FORMAT_ECP:
-        ret = neu_json_encode_with_mqtt_ecp(
-            &json, neu_json_encode_read_resp_ecp, &header,
-            neu_json_encode_read_periodic_resp, &json_str);
-        if (ret == -2) {
+    if (tag_values_to_json_historical(data->tags, s_tags, n_s_tags, &json) !=
+        0) {
+        if (skip != NULL) {
             *skip = true;
             plog_warn(plugin, "driver:%s group:%s, no valid tags", data->driver,
                       data->group);
         }
-        break;
+        return NULL;
+    }
+
+    switch (format) {
     case MQTT_UPLOAD_FORMAT_CUSTOM: {
-        ret = mqtt_schema_encode(data->driver, data->group, &json, vts, n_vts,
-                                 s_tags, n_s_tags, &json_str);
+        // 为历史数据生成固定格式的JSON: {"id": "global_timestamp_str",
+        // "version": "1.0", "params": [...], "method": "hisproperty.post"}
+        void *root = neu_json_encode_new();
+        if (!root) {
+            plog_error(plugin, "Failed to create JSON root object");
+            break;
+        }
+
+        // 创建params数组
+        void *params_array = json_array();
+        if (!params_array) {
+            plog_error(plugin, "Failed to create params array");
+            neu_json_encode_free(root);
+            break;
+        }
+
+        // 创建params中的对象（包含所有标签的value和time）
+        void *params_obj = neu_json_encode_new();
+        if (!params_obj) {
+            plog_error(plugin, "Failed to create params object");
+            neu_json_encode_free(root);
+            json_decref(params_array);
+            break;
+        }
+
+        // 遍历所有标签，添加到params对象中
+        neu_resp_tag_value_meta_t *tag_value = NULL;
+        while ((tag_value = (neu_resp_tag_value_meta_t *) utarray_next(
+                    data->tags, tag_value))) {
+
+            // 检查历史时间戳，如果没有或为0则跳过
+            if (tag_value->historical_timestamp == 0) {
+                plog_debug(plugin, "Skip tag %s: no historical timestamp",
+                           tag_value->tag);
+                continue;
+            }
+
+            // 为每个标签创建包含value和time的对象
+            void *tag_obj = neu_json_encode_new();
+            if (!tag_obj) {
+                plog_error(plugin, "Failed to create tag object for %s",
+                           tag_value->tag);
+                // 内存分配失败，停止处理并清理已分配的内存
+                break;
+            }
+
+            // 根据数据类型转换value为字符串
+            char value_str[256] = { 0 };
+            switch (tag_value->value.type) {
+            case NEU_TYPE_UINT8:
+                snprintf(value_str, sizeof(value_str), "%u",
+                         tag_value->value.value.u8);
+                break;
+            case NEU_TYPE_INT8:
+                snprintf(value_str, sizeof(value_str), "%d",
+                         tag_value->value.value.i8);
+                break;
+            case NEU_TYPE_UINT16:
+            case NEU_TYPE_WORD:
+                snprintf(value_str, sizeof(value_str), "%u",
+                         tag_value->value.value.u16);
+                break;
+            case NEU_TYPE_INT16:
+                snprintf(value_str, sizeof(value_str), "%d",
+                         tag_value->value.value.i16);
+                break;
+            case NEU_TYPE_UINT32:
+            case NEU_TYPE_DWORD:
+                snprintf(value_str, sizeof(value_str), "%u",
+                         tag_value->value.value.u32);
+                break;
+            case NEU_TYPE_INT32:
+                snprintf(value_str, sizeof(value_str), "%d",
+                         tag_value->value.value.i32);
+                break;
+            case NEU_TYPE_UINT64:
+            case NEU_TYPE_LWORD:
+                snprintf(value_str, sizeof(value_str), "%lu",
+                         tag_value->value.value.u64);
+                break;
+            case NEU_TYPE_INT64:
+                snprintf(value_str, sizeof(value_str), "%ld",
+                         tag_value->value.value.i64);
+                break;
+            case NEU_TYPE_FLOAT:
+                if (isnan(tag_value->value.value.f32)) {
+                    snprintf(value_str, sizeof(value_str), "null");
+                } else {
+                    snprintf(value_str, sizeof(value_str), "%.6f",
+                             tag_value->value.value.f32);
+                }
+                break;
+            case NEU_TYPE_DOUBLE:
+                if (isnan(tag_value->value.value.d64)) {
+                    snprintf(value_str, sizeof(value_str), "null");
+                } else {
+                    snprintf(value_str, sizeof(value_str), "%.6f",
+                             tag_value->value.value.d64);
+                }
+                break;
+            case NEU_TYPE_BOOL:
+                snprintf(value_str, sizeof(value_str), "%s",
+                         tag_value->value.value.boolean ? "1" : "0");
+                break;
+            case NEU_TYPE_STRING:
+            case NEU_TYPE_TIME:
+            case NEU_TYPE_DATA_AND_TIME:
+                if (tag_value->value.value.str) {
+                    snprintf(value_str, sizeof(value_str), "%s",
+                             tag_value->value.value.str);
+                } else {
+                    strcpy(value_str, "");
+                }
+                break;
+            default:
+                snprintf(value_str, sizeof(value_str), "0");
+                break;
+            }
+
+            // 使用历史时间戳
+            uint64_t timestamp = tag_value->historical_timestamp;
+
+            // 使用JSON对象直接设置字段
+            json_object_set_new(tag_obj, "value", json_string(value_str));
+            json_object_set_new(tag_obj, "time", json_integer(timestamp));
+
+            // 将标签对象添加到params对象中（以标签名为key）
+            json_object_set_new(params_obj, tag_value->tag, tag_obj);
+
+            // 不需要释放tag_obj，因为它已经被添加到params_obj中
+        }
+
+        // 将params对象添加到params数组中
+        json_array_append_new(params_array, params_obj);
+
+        // 创建global_timestamp的字符串形式作为id
+        char global_timestamp_str[32];
+        snprintf(global_timestamp_str, sizeof(global_timestamp_str), "%ld",
+                 global_timestamp);
+
+        // 使用JSON对象直接设置根对象的字段
+        json_object_set_new(root, "id", json_string(global_timestamp_str));
+        json_object_set_new(root, "version", json_string("1.0"));
+        json_object_set_new(root, "params", params_array);
+        json_object_set_new(root, "method", json_string("hisproperty.post"));
+
+        // 编码为JSON字符串
+        json_str = json_dumps(root, JSON_REAL_PRECISION(16));
+        if (!json_str) {
+            plog_error(plugin, "Failed to encode JSON to string");
+        }
+
+        // 释放根对象
+        neu_json_encode_free(root);
         break;
     }
-    case MQTT_UPLOAD_FORMAT_PROTOBUF:
-        break;
     default:
-        plog_warn(plugin, "invalid upload format: %d", format);
+        plog_warn(plugin,
+                  "unsupported upload format: %d, only CUSTOM format is "
+                  "supported for historical data",
+                  format);
         break;
     }
 
