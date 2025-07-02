@@ -1,4 +1,4 @@
-!/bin/bash
+#!/bin/bash
 
 # Install openssl
 echo "Installing openssl..."
@@ -88,7 +88,7 @@ sudo apt-get install ninja-build -y
 
 # Install gRPC
 echo "Installing gRPC..."
-git clone -b RELEASE_TAG_HERE https://github.com/grpc/grpc
+git clone -b v1.72.2 https://github.com/grpc/grpc
 cd grpc
 git submodule update --init
 mkdir -p cmake/build
@@ -99,26 +99,6 @@ cmake -DgRPC_INSTALL=ON \
       ../..
 make && sudo make install
 cd ../../.. 
-
-
-# Install OpenSSL 3.5.0
-echo "Installing OpenSSL 3.5.0..."
-wget https://www.openssl.org/source/openssl-3.5.0.tar.gz
-tar -xzf openssl-3.5.0.tar.gz
-cd openssl-3.5.0
-./config --prefix=/usr/local \
-         --openssldir=/usr/local/ssl \
-         --libdir=/usr/local/lib \
-         no-shared \
-         enable-ec_nistp_64_gcc_128 \
-         no-ssl3 \
-         no-weak-ssl-ciphers \
-         no-comp \
-         -fPIC \
-         -fvisibility=default
-make 
-sudo make install
-cd ..
 
 # Install gflag
 echo "Installing gflag..."
@@ -149,5 +129,14 @@ cmake .. \
 ninja
 sudo ninja install
 cd ../../..
+
+#install open62541
+echo "Installing open62541..."
+git clone -b v1.4.10 https://github.com/open62541/open62541.git
+cd open62541
+mkdir build
+cd build
+cmake .. && make && sudo make install
+cd ..
 
 echo "All dependencies installed successfully."
