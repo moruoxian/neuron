@@ -5826,6 +5826,13 @@ static int parse_and_store_historical_data(
                                     "FN=%u, PN=%u",
                                     j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
 
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
@@ -5894,7 +5901,13 @@ static int parse_and_store_historical_data(
                                     "A, FN=%u, PN=%u",
                                     phase_desc, j + 1, td.Nums, group_name,
                                     tag_name, time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -5983,7 +5996,13 @@ static int parse_and_store_historical_data(
                                     "值=%.3f, FN=%u, PN=%u",
                                     desc, j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6057,7 +6076,13 @@ static int parse_and_store_historical_data(
                                     "值=%.4f kWh, FN=%u, PN=%u",
                                     j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_DOUBLE;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6134,7 +6159,13 @@ static int parse_and_store_historical_data(
                                     "%s.%s 时间=%s, 值=%.4f kWh, FN=%u, PN=%u",
                                     tariff_desc, j + 1, td.Nums, group_name,
                                     tag_name, time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_DOUBLE;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6208,7 +6239,13 @@ static int parse_and_store_historical_data(
                                     "值=%.4f kW, FN=%u, PN=%u",
                                     j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_DOUBLE;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6257,7 +6294,13 @@ static int parse_and_store_historical_data(
                                     "值=%.3f Hz, FN=%u, PN=%u",
                                     j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6305,7 +6348,13 @@ static int parse_and_store_historical_data(
                                     "时间=%s, 值=%.3f, FN=%u, PN=%u",
                                     j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6357,7 +6406,13 @@ static int parse_and_store_historical_data(
                                     "值=%.3f, FN=%u, PN=%u",
                                     j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6412,7 +6467,13 @@ static int parse_and_store_historical_data(
                                     "FN=%u, PN=%u",
                                     curve_type, j + 1, td.Nums, group_name,
                                     tag_name, time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6474,7 +6535,13 @@ static int parse_and_store_historical_data(
                                     "FN=%u, PN=%u",
                                     flow_type, j + 1, td.Nums, group_name,
                                     tag_name, time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6537,7 +6604,13 @@ static int parse_and_store_historical_data(
                                     "FN=%u, PN=%u",
                                     flow_type, j + 1, td.Nums, group_name,
                                     tag_name, time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6601,7 +6674,13 @@ static int parse_and_store_historical_data(
                                     "FN=%u, PN=%u",
                                     temp_type, j + 1, td.Nums, group_name,
                                     tag_name, time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6657,7 +6736,13 @@ static int parse_and_store_historical_data(
                                     "值=%.3f, FN=%u, PN=%u",
                                     j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6707,7 +6792,13 @@ static int parse_and_store_historical_data(
                                     "时间=%s, 值=%.6f, FN=%u, PN=%u",
                                     j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6757,7 +6848,13 @@ static int parse_and_store_historical_data(
                                     "时间=%s, 值=%.6f, FN=%u, PN=%u",
                                     j + 1, td.Nums, group_name, tag_name,
                                     time_str, value, fn, pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_FLOAT;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
@@ -6824,7 +6921,13 @@ static int parse_and_store_historical_data(
                             "FN=%u, PN=%u", // ← %.6f适用于double
                             data_type_index, j + 1, td.Nums, group_name,
                             tag_name, time_str, value, recv_fn, recv_pn);
-
+                        // 上报历史数据到北向插件
+                        neu_dvalue_t dvalue = { 0 };
+                        dvalue.type         = NEU_TYPE_DOUBLE;
+                        dvalue.value.f32    = value;
+                        neu_plugin_update_history_tag(
+                            plugin, group_name, tag_name, dvalue,
+                            (uint64_t) current_timestamp * 1000);
                         // 更新点位状态
                         update_tag_state(plugin, group_name, tag_name,
                                          current_timestamp);
